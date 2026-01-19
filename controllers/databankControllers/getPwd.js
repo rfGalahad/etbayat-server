@@ -1,0 +1,59 @@
+import pool from '../../config/db.js';
+
+export const getPwd = async (req, res) => {
+  try {
+    const [rows] = await pool.query(`
+      SELECT
+        p.resident_id,
+        p.household_id,
+        CONCAT(
+            p.last_name, ', ',
+            p.first_name,
+            IFNULL(CONCAT(' ', p.middle_name), ''),
+            IFNULL(CONCAT(' ', p.suffix), '')
+        ) AS name,
+        p.sex,
+        DATE_FORMAT(p.birthdate, '%m-%d-%Y') as birthdate,
+        p.civil_status,
+        p.religion,
+        p.relation_to_family_head,
+        p.birthplace,
+
+        COALESCE(hi.barangay, ci.barangay) AS barangay,
+
+        sc.classification_code,
+        sc.classification_name,
+
+        sp.pwd_id
+
+      FROM population p
+
+      LEFT JOIN house_information hi
+          ON p.household_id = hi.household_id
+
+      LEFT JOIN contact_information ci
+          ON p.resident_id = ci.resident_id
+
+      JOIN social_classification sc
+        ON p.resident_id = sc.resident_id
+        AND sc.classification_code = 'PWD'
+
+      LEFT JOIN pwd_id_applications sp
+        ON p.resident_id = sp.resident_id;  
+    `);
+    
+    res.status(200).json({
+      success: true,
+      data: rows
+    });
+  } catch (error) {
+    console.error('Error fetching pwd data:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Error fetching pwd data', 
+      error: error.message 
+    });
+  }
+}
+
+

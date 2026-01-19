@@ -1,0 +1,4 @@
+export { getPopulation } from './getPopulation.js'
+export { getHousehold } from './getHousehold.js'
+export { getSoloParent } from './getSoloParent.js'
+export { getPwd } from './getPwd.js'
