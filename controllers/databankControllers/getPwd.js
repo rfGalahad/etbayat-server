@@ -5,7 +5,7 @@ export const getPwd = async (req, res) => {
     const [rows] = await pool.query(`
       SELECT
         p.resident_id,
-        p.household_id,
+        p.family_id,
         CONCAT(
             p.last_name, ', ',
             p.first_name,
@@ -13,7 +13,7 @@ export const getPwd = async (req, res) => {
             IFNULL(CONCAT(' ', p.suffix), '')
         ) AS name,
         p.sex,
-        DATE_FORMAT(p.birthdate, '%m-%d-%Y') as birthdate,
+        DATE_FORMAT(p.birthdate, '%m-%d-%Y') AS birthdate,
         p.civil_status,
         p.religion,
         p.relation_to_family_head,
@@ -27,19 +27,17 @@ export const getPwd = async (req, res) => {
         sp.pwd_id
 
       FROM population p
-
-      LEFT JOIN house_information hi
-          ON p.household_id = hi.household_id
-
-      LEFT JOIN contact_information ci
-          ON p.resident_id = ci.resident_id
-
-      JOIN social_classification sc
+      LEFT JOIN family_information f 
+        ON f.family_id = p.family_id
+      LEFT JOIN households hi
+         ON f.household_id = hi.household_id
+      LEFT JOIN contact_information ci 
+        ON p.resident_id = ci.resident_id
+      JOIN social_classification sc 
         ON p.resident_id = sc.resident_id
         AND sc.classification_code = 'PWD'
-
-      LEFT JOIN pwd_id_applications sp
-        ON p.resident_id = sp.resident_id;  
+      LEFT JOIN pwd_id_applications sp 
+        ON p.resident_id = sp.resident_id;
     `);
     
     res.status(200).json({

@@ -6,18 +6,18 @@ export const getPopulation = async (req, res) => {
       SELECT 
         p.resident_id,
         CONCAT(
-            p.last_name, ', ',
-            p.first_name,
-            IFNULL(CONCAT(' ', p.middle_name), ''),
-            IFNULL(CONCAT(' ', p.suffix), '')
+          p.last_name, ', ',
+          p.first_name,
+          IFNULL(CONCAT(' ', p.middle_name), ''),
+          IFNULL(CONCAT(' ', p.suffix), '')
         ) AS name,
         p.sex,
         DATE_FORMAT(p.birthdate, '%m-%d-%Y') AS birthdate,
         hi.barangay
       FROM population p
-      LEFT JOIN households hi
-        ON p.household_id = hi.household_id
-      WHERE p.resident_id LIKE 'RID%'
+      JOIN family_information fi ON p.family_id = fi.family_id
+      JOIN households hi ON fi.household_id = hi.household_id
+      WHERE p.resident_id LIKE 'FID%'
       ORDER BY name ASC;
     `);
     

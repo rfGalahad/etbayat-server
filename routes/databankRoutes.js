@@ -20,7 +20,7 @@ router.get('/household',
 // GET FAMILY
 router.get('/family', 
   authenticateToken, 
-  databankController.getHousehold
+  databankController.getFamily
 );
 
 // GET SOLO PARENT

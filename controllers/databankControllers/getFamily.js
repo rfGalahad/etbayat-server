@@ -1,23 +1,21 @@
 import pool from '../../config/db.js';
 
-export const getHousehold = async (req, res) => {
+export const getFamily = async (req, res) => {
   try {
     const [rows] = await pool.query(`
       SELECT
-        h.household_id,
-        h.survey_id,
+        p.family_id,
         CONCAT(
           p.last_name, ', ',
           p.first_name,
           IFNULL(CONCAT(' ', p.middle_name), ''),
           IFNULL(CONCAT(' ', p.suffix), '')
-        ) AS name,
-        h.house_structure,
-        h.house_condition,
-        h.street,
-        h.barangay
+        ) AS familyHead,
+        s.service_availed,
+          h.barangay
       FROM population p
       JOIN family_information fi ON fi.family_id = p.family_id
+      JOIN service_availed s ON s.family_id = p.family_id
       JOIN households h ON fi.household_id = h.household_id
       WHERE p.relation_to_family_head = 'Family Head';
     `);
@@ -27,10 +25,10 @@ export const getHousehold = async (req, res) => {
       data: rows
     });
   } catch (error) {
-    console.error('Error fetching household data:', error);
+    console.error('Error fetching family data:', error);
     res.status(500).json({ 
       success: false, 
-      message: 'Error fetching household data', 
+      message: 'Error fetching family data', 
       error: error.message 
     });
   }
