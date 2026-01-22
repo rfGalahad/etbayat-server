@@ -381,7 +381,8 @@ export const getSurveyById = async (req, res) => {
         householdInformationRow.longitude
       ],
       houseStreet: householdInformationRow.houseStreet,
-      barangay: householdInformationRow.barangay
+      barangay: householdInformationRow.barangay,
+      multipleFamily: householdInformationRow.multipleFamily
     };
     
     // WATER SOURCES

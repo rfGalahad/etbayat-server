@@ -293,6 +293,14 @@ const prepareSocialClassifications = (familyProfile, CLASSIFICATIONS) => {
       ]);
     }
 
+    if (member.nonIvatan) {
+      values.push([
+        residentId,
+        CLASSIFICATIONS.nonIvatan.code,
+        CLASSIFICATIONS.nonIvatan.name
+      ]);
+    }
+
     if (member.youthCategory && CLASSIFICATIONS[member.youthCategory]) {
       values.push([
         residentId,

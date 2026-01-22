@@ -11,6 +11,19 @@ router.get('/population',
   databankController.getPopulation
 );
 
+// GET FEMALE AGE SEGREGATION
+router.get('/age-segregation/female', 
+  authenticateToken, 
+  databankController.getFemaleSegregation
+);
+
+// GET MALE AGE SEGREGATION
+router.get('/age-segregation/male', 
+  authenticateToken, 
+  databankController.getMaleSegregation
+);
+
+
 // GET HOUSEHOLD
 router.get('/household', 
   authenticateToken, 

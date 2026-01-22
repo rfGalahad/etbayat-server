@@ -19,7 +19,6 @@ router.post('/',
 
 // GET ALL POSTS
 router.get('/', 
-  authenticateToken, 
   postController.getAllPosts
 );
 

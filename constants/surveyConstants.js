@@ -7,5 +7,6 @@ export const CLASSIFICATIONS = {
   OSY: { code: 'OSY', name: 'Out of School Youth' },
   pantawidBeneficiary: { code: 'PB', name: 'Pantawid Beneficiary' },
   lgbtq: { code: 'LGBTQ', name: 'LGBTQ+' },
-  indigenousPerson: { code: 'INDIGENOUS', name: 'Indigenous Person' }
+  indigenousPerson: { code: 'INDIGENOUS', name: 'Indigenous Person' },
+  nonIvatan: { code: 'IPULA', name: 'Ipula/Non-Ivatan' }
 };

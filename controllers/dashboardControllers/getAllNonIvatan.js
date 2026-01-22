@@ -1,16 +1,18 @@
 import pool from '../../config/db.js';
 
-export const getAllPopulationByBarangay = async (req, res) => {
+export const getAllNonIvatan = async (req, res) => {
   try {
     const [rows] = await pool.query(`
       SELECT 
           h.barangay,
-          COUNT(p.resident_id) AS total_population
+          COUNT(p.resident_id) AS total_nonIvatan
       FROM population p
       JOIN family_information f 
           ON p.family_id = f.family_id
       JOIN households h 
           ON f.household_id = h.household_id
+      JOIN social_classification sc ON sc.resident_id = p.resident_id
+      WHERE sc.classification_code = 'IPULA'
       GROUP BY h.barangay
       ORDER BY h.barangay;
     `);

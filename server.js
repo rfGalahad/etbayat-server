@@ -26,11 +26,12 @@ app.use(cors({
     'http://127.0.0.1:4173',
     'http://192.168.0.190:5173',
     'http://192.168.0.101:4173',
-    'https://e-tbayatmswdo.com'
+    'https://e-tbayatmswdo.com',
+    'https://www.e-tbayatmswdo.com' 
   ],
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
-  credentials: true
+  // credentials: true
 }));
 
 app.use(express.json());

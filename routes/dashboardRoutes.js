@@ -12,9 +12,45 @@ router.get('/stats',
 );
 
 // GET POPULATION BY BARANGAY
-router.get('/populationByBarangay', 
+router.get('/population', 
   authenticateToken, 
-  dashboardController.getAllPopulationByBarangay
+  dashboardController.getAllPopulation
+);
+
+// GET FEMALE AGE SEGREGATION
+router.get('/ageSegregation/female', 
+  authenticateToken, 
+  dashboardController.getFemaleAgeSegregation
+);
+
+// GET MALE AGE SEGREGATION
+router.get('/ageSegregation/male', 
+  authenticateToken, 
+  dashboardController.getMaleAgeSegregation
+);
+
+// GET SOLO PARENT
+router.get('/soloParent', 
+  authenticateToken, 
+  dashboardController.getAllSoloParent
+);
+
+// GET ALL PWD
+router.get('/pwd', 
+  authenticateToken, 
+  dashboardController.getAllPwd
+);
+
+// GET ALL SENIOR CITIZEN
+router.get('/seniorCitizen', 
+  authenticateToken, 
+  dashboardController.getAllSeniorCitizen
+);
+
+// GET ALL NON-IVATAN / IPULA
+router.get('/nonIvatan', 
+  authenticateToken, 
+  dashboardController.getAllNonIvatan
 );
 
 
