@@ -198,7 +198,7 @@ export const updateHouseholdData = async (connection, data) => {
         longitude = ?,
         street = ?,
         barangay = ?,
-        multipleFamily = ?
+        multiple_family = ?
     WHERE household_id = ?`, 
     [
       data.householdInformation?.houseStructure ?? null,

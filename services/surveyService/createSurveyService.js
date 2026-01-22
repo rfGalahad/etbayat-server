@@ -204,7 +204,7 @@ export const insertHouseholdData = async (connection, data) => {
       street,
       barangay,
       municipality,
-      multipleFamily
+      multiple_family
     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `, [
     data.householdId,
