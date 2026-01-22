@@ -5,15 +5,23 @@ export const getAllHouseholdStructure = async (req, res) => {
     const [rows] = await pool.query(`
       SELECT 
           barangay,
-          COUNT(household_id) AS total_householdStructure
+          house_structure,
+          COUNT(*) AS total
       FROM households
-      GROUP BY barangay
-      ORDER BY barangay;
+      GROUP BY barangay, house_structure
+      ORDER BY barangay, house_structure;
     `);
-    
+
+    // Transform the data per barangay
+    const transformed = {};
+    rows.forEach(item => {
+      if (!transformed[item.barangay]) transformed[item.barangay] = { barangay: item.barangay };
+      transformed[item.barangay][item.house_structure] = item.total;
+    });
+
     res.status(200).json({
       success: true,
-      data: rows
+      data: Object.values(transformed)
     });
   } catch (error) {
     console.error('Error fetching stats:', error);
@@ -23,4 +31,4 @@ export const getAllHouseholdStructure = async (req, res) => {
       error: error.message 
     });
   }
-}
+};

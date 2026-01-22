@@ -53,5 +53,22 @@ router.get('/nonIvatan',
   dashboardController.getAllNonIvatan
 );
 
+// GET ALL HOUSEHOLD STRUCTURE
+router.get('/householdStructure', 
+  authenticateToken, 
+  dashboardController.getAllHouseholdStructure
+);
+
+// GET ALL HOUSEHOLD CONDITION
+router.get('/householdCondition', 
+  authenticateToken, 
+  dashboardController.getAllHouseholdCondition
+);
+
+// GET ALL WATER SOURCES
+router.get('/waterSources', 
+  authenticateToken, 
+  dashboardController.getAllWaterSources
+);
 
 export default router; 

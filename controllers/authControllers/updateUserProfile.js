@@ -1,32 +1,49 @@
-import * as userModel from '../../models/userModel.js';
+import pool from '../../config/db.js';
 
 
 
 export const updateUserProfile = async (req, res) => {
   try {
-    const { userId, username, name } = req.user;
+    const { userId } = req.user;
+    const { username, name } = req.body;
 
-    // CHECK USERNAME IF ALREADY TAKEN
-    if (username && name) {
+    // CHECK IF USERNAME IS ALREADY TAKEN (only if username is being updated)
+    if (username !== undefined) {
       const existingUser = await pool.query(`
-        SELECT username FROM users WHERE username = ?`, [username])
-      if (existingUser && existingUser.userId !== userId) {
+        SELECT user_id FROM users WHERE username = ?`, [username]);
+      
+      if (existingUser.length > 0 && existingUser[0].user_id !== userId) {
         return res.status(400).json({
           error: "Username is already taken"
         });
       }
     }
 
-    await pool.query( `
-      UPDATE users 
-      SET name = ?,
-          username = ?  
-      WHERE user_id = ?`,
-      [
-        name, 
-        username, 
-        userId
-      ]
+    // Build dynamic update query
+    const updates = [];
+    const values = [];
+
+    if (name !== undefined) {
+      updates.push('name = ?');
+      values.push(name);
+    }
+
+    if (username !== undefined) {
+      updates.push('username = ?');
+      values.push(username);
+    }
+
+    if (updates.length === 0) {
+      return res.status(400).json({
+        error: "No fields to update"
+      });
+    }
+
+    values.push(userId);
+
+    await pool.query(
+      `UPDATE users SET ${updates.join(', ')} WHERE user_id = ?`,
+      values
     );
     
     res.status(200).json({
