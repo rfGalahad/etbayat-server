@@ -200,7 +200,7 @@ export const getSurveyById = async (req, res) => {
           longitude,
           street as houseStreet,
           barangay,
-          multipleFamily
+          multiple_family
          FROM households
          WHERE household_id = ?`,
          [householdId]
