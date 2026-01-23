@@ -40,7 +40,7 @@ router.post('/',
 );
 
 // UPDATE HAZARD AREA
-router.put('/', 
+router.put('/:hazardAreaId', 
   authenticateToken, 
   activityLogger((req, resData) => 
     `Updated hazard area //`

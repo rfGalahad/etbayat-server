@@ -1,6 +1,6 @@
 import pool from '../../config/db.js';
 
-export const getWomenMasterlist = async (req, res) => {
+export const getMenMasterlist = async (req, res) => {
   try {
     const [rows] = await pool.query(`
       SELECT 
@@ -23,7 +23,7 @@ export const getWomenMasterlist = async (req, res) => {
           ON p.family_id = fi.family_id
       INNER JOIN households h
           ON fi.household_id = h.household_id
-      WHERE p.sex = 'Female'
+      WHERE p.sex = 'Male'
       ORDER BY 
         p.last_name,
         p.first_name,
@@ -36,10 +36,10 @@ export const getWomenMasterlist = async (req, res) => {
       data: rows
     });
   } catch (error) {
-    console.error('Error fetching women masterlist data:', error);
+    console.error('Error fetching men masterlist data:', error);
     res.status(500).json({ 
       success: false, 
-      message: 'Error fetching women masterlist data', 
+      message: 'Error fetching men masterlist data', 
       error: error.message 
     });
   }

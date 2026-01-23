@@ -71,4 +71,22 @@ router.get('/waterSources',
   dashboardController.getAllWaterSources
 );
 
+// GET ALL WATER ACCESS / POTABLE WATER
+router.get('/waterAccess', 
+  authenticateToken, 
+  dashboardController.getAllWaterAccess
+);
+
+// GET ALL OFW
+router.get('/ofw', 
+  authenticateToken, 
+  dashboardController.getAllOfw
+);
+
+// GET ALL OUT OF TOWN
+router.get('/outOfTown', 
+  authenticateToken, 
+  dashboardController.getAllOutOfTown
+);
+
 export default router; 

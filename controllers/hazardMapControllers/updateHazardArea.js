@@ -3,6 +3,7 @@ import pool from '../../config/db.js';
 export const updateHazardArea = async (req, res) => {
   try {
     const { 
+      id,
       latitude, 
       longitude, 
       radius, 
@@ -23,7 +24,7 @@ export const updateHazardArea = async (req, res) => {
 
     res.status(201).json({ 
       message: 'Hazard area created successfully',
-      hazardAreaId: result.insertId 
+      hazardAreaId: res.insertId 
     });
   } catch (error) {
     console.error('Error creating hazard area:', error);

@@ -1,4 +1,4 @@
-import pool from '../config/db.js';
+ import pool from '../config/db.js';
 
 
 export const findUserByUsername = async (username) => {
@@ -6,8 +6,8 @@ export const findUserByUsername = async (username) => {
   return rows[0];
 };
 
-export const findUserByID = async (userID) => {
-  const [rows] = await pool.query("SELECT * FROM users WHERE user_id = ?", [userID]);
+export const findUserByID = async (userId) => {
+  const [rows] = await pool.query("SELECT * FROM users WHERE user_id = ?", [userId]);
   return rows[0];
 };
 

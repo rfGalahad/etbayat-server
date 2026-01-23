@@ -5,11 +5,11 @@ import * as userModel from '../../models/userModel.js';
 
 export const changePassword = async (req, res) => {
   try {
-    const { userID } = req.params;
+    const { userId } = req.user;
     const { oldPassword, newPassword } = req.body;
     
     // FIND USER
-    const user = await userModel.findUserByID(userID);
+    const user = await userModel.findUserByID(userId);
     if (!user) {
       return res.status(404).json({
         error: "User not found"
@@ -28,7 +28,8 @@ export const changePassword = async (req, res) => {
     const hashedPassword = await bcrypt.hash(newPassword, 10);
     
     // UPDATE PASSWORD
-    await userModel.updateUserPassword(userID, hashedPassword);
+    await userModel.updateUserPassword(userId, hashedPassword);
+
     
     res.status(200).json({
       success: true,

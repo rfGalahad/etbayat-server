@@ -49,6 +49,50 @@ router.get('/pwd',
 );
 
 
+// GET WOMEN MASTERLIST
+router.get('/masterlist/women', 
+  authenticateToken, 
+  databankController.getWomenMasterlist
+);
+
+// GET MEN MASTERLIST
+router.get('/masterlist/men', 
+  authenticateToken, 
+  databankController.getMenMasterlist
+);
+
+// GET SENIOR CITIZEN MASTERLIST
+router.get('/masterlist/seniorCitizen', 
+  authenticateToken, 
+  databankController.getSeniorCitizenMasterlist
+);
+
+// GET NON-IVATAN MASTERLIST
+router.get('/masterlist/nonIvatan', 
+  authenticateToken, 
+  databankController.getNonIvatanMasterlist
+);
+
+// GET OFW MASTERLIST
+router.get('/masterlist/ofw', 
+  authenticateToken, 
+  databankController.getOfwMasterlist
+);
+
+// GET OUT-OF-TOWN MASTERLIST
+router.get('/masterlist/outOfTown', 
+  authenticateToken, 
+  databankController.getOutOfTownMasterlist
+);
+
+
+// GET RESIDENT INFO BY ID
+router.get('/resident/:residentId',
+  authenticateToken,
+  databankController.getResidentInfoById
+);
+
+
 
 
 
