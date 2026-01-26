@@ -6,65 +6,73 @@ export const deleteSurvey = async (req, res) => {
   try {
     const { surveyId } = req.params;
 
+    // 1️⃣ Get respondent images
     const [respondentRows] = await pool.query(
       `SELECT 
-      respondent_photo_id as respondentPhotoPublicId,
-      respondent_signature_id as respondentSignaturePublicId
-      FROM surveys 
-      WHERE survey_id = ?`,
+        respondent_photo_id AS respondentPhotoPublicId,
+        respondent_signature_id AS respondentSignaturePublicId
+       FROM surveys
+       WHERE survey_id = ?`,
       [surveyId]
     );
 
-    const [householdRows] = await pool.query(
-      `SELECT household_id as householdId
-      FROM households
-      WHERE survey_id = ?`,
+    // 2️⃣ Get household_id THROUGH family_information
+    const [familyRows] = await pool.query(
+      `SELECT household_id AS householdId
+       FROM family_information
+       WHERE survey_id = ?`,
       [surveyId]
-    )
-
-    const householdId = householdRows[0].householdId;
-
-    const [houseImagesRows] = await pool.query(
-      `SELECT house_image_public_id as houseImagePublicId
-      FROM house_images 
-      WHERE household_id = ?`,
-      [householdId]
     );
 
-    const publicIdsToDelete = [];
+    const householdId = familyRows?.[0]?.householdId;
 
-    if (houseImagesRows?.length > 0) {
-      publicIdsToDelete.push(
-        ...houseImagesRows
-          .map(img => img.houseImagePublicId)
-          .filter(Boolean)
+    // 3️⃣ Get house images (if household exists)
+    let houseImagesRows = [];
+    if (householdId) {
+      [houseImagesRows] = await pool.query(
+        `SELECT house_image_public_id AS houseImagePublicId
+         FROM house_images
+         WHERE household_id = ?`,
+        [householdId]
       );
     }
 
-    if (respondentRows?.length > 0) {
+    // 4️⃣ Collect Cloudinary public IDs
+    const publicIdsToDelete = [];
+
+    if (houseImagesRows.length > 0) {
+      publicIdsToDelete.push(
+        ...houseImagesRows.map(img => img.houseImagePublicId).filter(Boolean)
+      );
+    }
+
+    if (respondentRows.length > 0) {
       publicIdsToDelete.push(
         ...Object.values(respondentRows[0]).filter(Boolean)
       );
     }
 
+    // 5️⃣ Delete images from Cloudinary
     if (publicIdsToDelete.length > 0) {
       await deleteMultipleFromCloudinary(publicIdsToDelete);
-      console.log(`Cleaned up ${publicIdsToDelete.length} images from Cloudinary`);
     }
 
+    // 6️⃣ Delete survey
+    // CASCADE will delete family_information row automatically
     await pool.query(
       `DELETE FROM surveys WHERE survey_id = ?`,
       [surveyId]
     );
 
-    return res.status(200).json({ 
+    return res.status(200).json({
       success: true,
       message: 'Survey Deleted Successfully!',
-      surveyId: surveyId
+      surveyId
     });
+
   } catch (error) {
     console.error('Error deleting survey:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
       message: 'Server error'
     });
