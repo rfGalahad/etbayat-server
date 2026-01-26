@@ -7,31 +7,21 @@ export const resizeImages = async (req, res, next) => {
   if (!req.file && !req.files) return next();
 
   try {
-    /*
-    if (!fs.existsSync('uploads')) {
-      fs.mkdirSync('uploads');
-    }
-    */
    
     const processImage = async (file, options, prefix) => {
-      const filename = `${prefix}-${Date.now()}-${Math.random()
-        .toString(36)
-        .slice(2)}.jpg`;
-
-      const outputPath = path.join('uploads', filename);
-
-      await sharp(file.buffer)
+      const buffer = await sharp(file.buffer)
         .rotate()
         .resize(options.resize)
         .jpeg({ quality: options.quality })
-        .toFile(outputPath);
+        .toBuffer(); // ❌ no file written to disk
 
       return {
         ...file,
-        filename,
-        path: outputPath
+        buffer,              // updated resized image buffer
+        size: buffer.length, // optional
       };
     };
+
 
     /* ---------- SINGLE FILE (upload.single) ---------- */
 

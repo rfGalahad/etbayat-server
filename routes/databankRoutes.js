@@ -50,37 +50,37 @@ router.get('/pwd',
 
 
 // GET WOMEN MASTERLIST
-router.get('/masterlist/women', 
+router.get('/women', 
   authenticateToken, 
   databankController.getWomenMasterlist
 );
 
 // GET MEN MASTERLIST
-router.get('/masterlist/men', 
+router.get('/men', 
   authenticateToken, 
   databankController.getMenMasterlist
 );
 
 // GET SENIOR CITIZEN MASTERLIST
-router.get('/masterlist/seniorCitizen', 
+router.get('/seniorCitizen', 
   authenticateToken, 
   databankController.getSeniorCitizenMasterlist
 );
 
 // GET NON-IVATAN MASTERLIST
-router.get('/masterlist/nonIvatan', 
+router.get('/nonIvatan', 
   authenticateToken, 
   databankController.getNonIvatanMasterlist
 );
 
 // GET OFW MASTERLIST
-router.get('/masterlist/ofw', 
+router.get('/ofw', 
   authenticateToken, 
   databankController.getOfwMasterlist
 );
 
 // GET OUT-OF-TOWN MASTERLIST
-router.get('/masterlist/outOfTown', 
+router.get('/outOfTown', 
   authenticateToken, 
   databankController.getOutOfTownMasterlist
 );

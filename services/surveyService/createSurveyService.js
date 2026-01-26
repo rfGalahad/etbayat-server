@@ -177,7 +177,7 @@ export const insertSurveyData = async (connection, data) => {
   } 
   
   // COMMUNITY ISSUES
-  if (data.commmunityIssues) {
+  if (data.communityIssues) {
     await connection.query(
       `INSERT INTO community_issues (
         survey_id, 
@@ -185,18 +185,18 @@ export const insertSurveyData = async (connection, data) => {
       ) VALUES (?, ?)`,
       [
         data.surveyId,
-        data.commmunityIssues.communityIssue
+        data.communityIssues.communityIssue
       ]
     );
   }
 };
 
 export const insertHouseholdData = async (connection, data) => {
+
   // HOUSEHOLDS
   await connection.query(`
     INSERT IGNORE INTO households (
       household_id,
-      survey_id,
       house_structure,
       house_condition,
       latitude,
@@ -208,7 +208,6 @@ export const insertHouseholdData = async (connection, data) => {
     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `, [
     data.householdId,
-    data.surveyId,
     data.householdInformation?.houseStructure ?? null,
     data.householdInformation?.houseCondition ?? null,
     data.householdInformation?.position?.[0] ?? null,
@@ -256,6 +255,7 @@ export const insertFamilyData = async (connection, data) => {
     `INSERT INTO family_information (
       family_id,
       household_id,
+      survey_id,
       monthly_income,
       irregular_income,
       family_income
@@ -263,6 +263,7 @@ export const insertFamilyData = async (connection, data) => {
     [
       data.familyId,
       data.householdId,
+      data.surveyId,
       parseIncome(data.familyInformation?.monthlyIncome) ?? 0,
       parseIncome(data.familyInformation?.irregularIncome) ?? 0,
       parseIncome(data.familyInformation?.familyIncome) ?? 0,
@@ -308,6 +309,8 @@ export const insertPopulationData = async (connection, residentValues) => {
       suffix,
       sex,
       birthdate,
+      verified_birthdate,
+      specify_id,
       civil_status,
       religion,
       relation_to_family_head,

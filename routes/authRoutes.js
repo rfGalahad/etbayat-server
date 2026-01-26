@@ -69,6 +69,12 @@ router.put(
   authController.changePassword
 );
 
+// RESET PASWORD
+router.put(
+  '/users/reset-password', 
+  authenticateToken, 
+  authController.resetPassword
+);
 
 
 export default router; 

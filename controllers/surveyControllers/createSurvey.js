@@ -220,6 +220,7 @@ export const createSurvey = async (req, res) => {
     await insertFamilyData(connection, {
       familyId,
       householdId,
+      surveyId,
       familyInformation,
       serviceAvailedValues
     })

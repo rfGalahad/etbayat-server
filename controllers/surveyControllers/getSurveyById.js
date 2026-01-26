@@ -16,26 +16,25 @@ export const getSurveyById = async (req, res) => {
     const [householdRows] = await connection.query(`
       SELECT 
           household_id AS householdId
-      FROM households
+      FROM family_information
       WHERE survey_id = ?;`,
       [surveyId]
     );
 
     const householdId = householdRows[0].householdId;
 
-    const [familyRows] = await connection.query(
-      `SELECT 
+    const [familyRows] = await connection.query(`
+      SELECT 
         s.respondent,
         f.family_id as familyId,
         f.irregular_income AS irregularIncome,
         f.family_class AS familyClass,
         f.monthly_income AS monthlyIncome, 
         f.family_income AS familyIncome
-      FROM family_information f
-      JOIN households h ON h.household_id = f.household_id
-      JOIN surveys s ON s.survey_id = h.survey_id
-      WHERE f.household_id = ?`,
-      [householdId]
+      FROM surveys s
+      JOIN family_information f ON s.survey_id = f.survey_id
+      WHERE s.survey_id = ?`,
+      [surveyId]
     );
 
     const familyInformation = familyRows[0] || {};
@@ -74,6 +73,15 @@ export const getSurveyById = async (req, res) => {
           p.suffix,
           p.sex,
           DATE_FORMAT(p.birthdate, '%m-%d-%Y') as birthdate,
+
+          CASE
+            WHEN p.verified_birthdate = 1
+            THEN TRUE
+            ELSE FALSE
+          END as verifiedBirthdate,
+
+          p.specify_id as specifyId,
+
           p.civil_status as civilStatus,
           p.religion,
           p.relation_to_family_head as relationToFamilyHead,
@@ -153,41 +161,46 @@ export const getSurveyById = async (req, res) => {
       ),
 
       // EXPENSES
-      connection.query(
-        `SELECT 
-        food_expenses_id as foodExpensesId,
-        expense_type, 
-        amount 
+      connection.query(`
+        SELECT 
+          food_expenses_id as foodExpensesId,
+          expense_type, 
+          amount 
         FROM food_expenses 
         WHERE survey_id = ?
         
         UNION ALL
 
         SELECT 
-        education_expenses_id as educationExpensesId,
-        expense_type, 
-        amount 
+          education_expenses_id as educationExpensesId,
+          expense_type, 
+          amount 
         FROM education_expenses 
         WHERE survey_id = ?
 
         UNION ALL
         
         SELECT 
-        family_expenses_id as familyExpensesId,
-        expense_type, 
-        amount 
+          family_expenses_id as familyExpensesId,
+          expense_type, 
+          amount 
         FROM family_expenses 
         WHERE survey_id = ?
 
         UNION ALL
 
         SELECT 
-        monthly_expenses_id as monthlyExpensesId,
-        expense_type, 
-        amount 
+          monthly_expenses_id as monthlyExpensesId,
+          expense_type, 
+          amount 
         FROM monthly_expenses 
         WHERE survey_id = ?`,
-        [surveyId, surveyId, surveyId, surveyId]
+        [
+          surveyId, 
+          surveyId, 
+          surveyId, 
+          surveyId
+        ]
       ),
 
       // HOUSEHOLD INFORMATION
@@ -200,7 +213,7 @@ export const getSurveyById = async (req, res) => {
           longitude,
           street as houseStreet,
           barangay,
-          multiple_family
+          multiple_family as multipleFamily  
          FROM households
          WHERE household_id = ?`,
          [householdId]

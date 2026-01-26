@@ -108,21 +108,41 @@ export const updateSurveyData = async (connection, data) => {
   );
 
   // UPDATE FARM LOTS 
-  await connection.query(
-    `UPDATE farm_lots
-     SET ownership_type = ?, 
-         cultivation = ?,
-         pastureland = ?,
-         forestland = ?
-    WHERE farm_lots_id = ?`,
-    [
-      data.farmlots.ownershipType,
-      data.farmlots.cultivation,
-      data.farmlots.pastureland,
-      data.farmlots.forestland,
-      data.farmlots.farmlotsId
-    ]
-  );
+  if (data.farmlots.farmlotsId) {
+    await connection.query(
+      `UPDATE farm_lots
+      SET ownership_type = ?, 
+          cultivation = ?,
+          pastureland = ?,
+          forestland = ?
+      WHERE farm_lots_id = ?`,
+      [
+        data.farmlots.ownershipType,
+        data.farmlots.cultivation,
+        data.farmlots.pastureland,
+        data.farmlots.forestland,
+        data.farmlots.farmlotsId
+      ]
+    );
+  } else {
+    await connection.query(
+      `INSERT INTO farm_lots (
+        survey_id, 
+        ownership_type, 
+        cultivation,
+        pastureland,
+        forestland
+      ) VALUES (?, ?, ?, ?, ?)`,
+      [
+        data.surveyId,
+        data.farmlots.ownershipType,
+        data.farmlots.cultivation || null,
+        data.farmlots.pastureland || null,
+        data.farmlots.forestland || null
+      ]
+    );
+  }
+  
 
   // UPSERT CROPS PLANTED
   await bulkUpsert(
@@ -170,15 +190,29 @@ export const updateSurveyData = async (connection, data) => {
   );
 
   // UPDATE COMMUNITY ISSUES
-  await connection.query(`
-    UPDATE community_issues
-    SET community_issue = ?
-    WHERE community_issues_id = ?`,
-    [
-      data.communityIssues.communityIssue,
-      data.communityIssues.communityIssuesId
-    ]
-  );
+  if (data.communityIssues?.communityIssuesId) {
+    await connection.query(`
+      UPDATE community_issues
+      SET community_issue = ?
+      WHERE community_issues_id = ?`,
+      [
+        data.communityIssues.communityIssue,
+        data.communityIssues.communityIssuesId
+      ]
+    );
+  } else {
+    await connection.query(
+      `INSERT INTO community_issues (
+        survey_id, 
+        community_issue
+      ) VALUES (?, ?)`,
+      [
+        data.surveyId,
+        data.communityIssues.communityIssue
+      ]
+    );
+  }
+  
 };
 
 
@@ -188,10 +222,10 @@ export const updateSurveyData = async (connection, data) => {
 // UPDATE HOUSEHOLD DATA
 
 export const updateHouseholdData = async (connection, data) => {
-
+ 
   // HOUSEHOLDS
   await connection.query(`
-    UPDATE households 
+    UPDATE households  
     SET house_structure = ?,
         house_condition = ?,
         latitude = ?,
@@ -426,6 +460,8 @@ export const syncPopulation = async (
       r.suffix || null,
       r.sex,
       formatDateForMySQL(r.birthdate),
+      r.verifiedBirthdate,
+      r.specifyId,
       r.civilStatus,
       r.religion,
       r.relationToFamilyHead,

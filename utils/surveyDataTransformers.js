@@ -166,9 +166,11 @@ export const prepareServiceAvailedValues = (familyId, serviceAvailed) => {
 // POPULATION / RESIDENT 
 
 const assignResidentIds = (familyId, familyProfile) => {
+  const residentBaseId = familyId.replace(/^FID/, 'RID');
+
   familyProfile.forEach((member, index) => {
     if (!member.residentId) {
-      member.residentId = `${familyId}-${index + 1}`;
+      member.residentId = `${residentBaseId}-${index + 1}`;
     }
   });
 };
@@ -183,6 +185,8 @@ const preparePopulationValues = (familyId, familyProfile) => {
     member.suffix || null,
     member.sex || null,
     formatDateForMySQL(member.birthdate) || null,
+    member.verifiedBirthdate,
+    member.specifyId,
     member.civilStatus || null,
     member.religion || null,
     member.relationToFamilyHead || null,

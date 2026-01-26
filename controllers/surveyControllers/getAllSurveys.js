@@ -5,18 +5,21 @@ export const getAllSurveys = async (req, res) => {
     const { role, userId } = req.user;
 
     let query = `
-      SELECT 
-        s.survey_id,
-        s.respondent,
-        s.created_at,
-        u.name AS interviewer,
-        u.role,
-        h.barangay
-    FROM surveys s
-    LEFT JOIN users u
-        ON s.user_id = u.user_id
-    LEFT JOIN households h
-        ON s.survey_id = h.survey_id`;
+      SELECT  
+          s.survey_id,
+          s.respondent,
+          s.created_at,
+          u.name AS interviewer,
+          u.role,
+          h.barangay
+      FROM surveys s
+      LEFT JOIN users u
+          ON s.user_id = u.user_id
+      LEFT JOIN family_information f
+          ON f.survey_id = s.survey_id
+      LEFT JOIN households h
+          ON h.household_id = f.household_id;
+      `;
     let params = [];
 
     if (role === 'Barangay Official') {

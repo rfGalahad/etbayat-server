@@ -7,10 +7,6 @@ export const updateUserProfile = async (req, res) => {
     const { userId } = req.user;
     const { username, name } = req.body;
 
-    console.log("Updating profile for user ID:", userId);
-    console.log("New username:", username);
-    console.log("New name:", name);
-
     // CHECK IF USERNAME IS ALREADY TAKEN (only if username is being updated)
     if (username !== undefined) {
       const existingUser = await pool.query(`
@@ -54,7 +50,8 @@ export const updateUserProfile = async (req, res) => {
     
     res.status(200).json({
       success: true,
-      message: "Profile updated successfully"
+      message: "Profile updated successfully",
+      userId: userId
     });
   } catch (error) {
     console.error("Error updating user profile:", error);
