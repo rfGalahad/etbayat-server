@@ -23,8 +23,15 @@ export const createUser = async (req, res) => {
     }
 
     // INSERT NEW ACCOUNT
-    const [results] = await connection.query(
-      `INSERT INTO users VALUES (?, ?, ?, ?, ?, ?)`,
+    const [results] = await connection.query(`
+      INSERT INTO users (
+        user_id, 
+        name, 
+        username, 
+        password, 
+        role, 
+        barangay
+      ) VALUES (?, ?, ?, ?, ?, ?)`,
       [
         newUser.user_id,
         newUser.name,
