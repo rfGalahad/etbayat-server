@@ -24,6 +24,7 @@ export const getMenMasterlist = async (req, res) => {
       INNER JOIN households h
           ON fi.household_id = h.household_id
       WHERE p.sex = 'Male'
+      AND TIMESTAMPDIFF(YEAR, p.birthdate, CURDATE()) BETWEEN 18 AND 59
       ORDER BY 
         p.last_name,
         p.first_name,

@@ -11,7 +11,7 @@ export const getAllSeniorCitizen = async (req, res) => {
           ON p.family_id = f.family_id
       JOIN households h 
           ON f.household_id = h.household_id
-      JOIN social_classification sc
+      LEFT JOIN social_classification sc
           ON sc.resident_id = p.resident_id
       WHERE TIMESTAMPDIFF(YEAR, p.birthdate, CURDATE()) >= 60
       GROUP BY h.barangay
