@@ -395,13 +395,16 @@ export const updateFamilyData = async (connection, data) => {
 
 
 export const syncPopulation = async (
-  connection, 
-  familyId, 
+  connection,
+  familyId,
   familyProfile
 ) => {
   await connection.beginTransaction();
 
   try {
+    // 🔹 Convert FID → RID once
+    const residentBaseId = familyId.replace(/^FID/, 'RID');
+
     /** 1️⃣ Collect resident IDs sent by client */
     const existingResidentIds = familyProfile
       .filter(r => r.residentId)
@@ -422,7 +425,7 @@ export const syncPopulation = async (
       );
     }
 
-    /** 3️⃣ Determine next resident number for new members */
+    /** 3️⃣ Determine next resident number (RID-based) */
     const [rows] = await connection.query(
       `SELECT MAX(
           CAST(SUBSTRING_INDEX(resident_id, '-', -1) AS UNSIGNED)
@@ -431,26 +434,25 @@ export const syncPopulation = async (
        WHERE family_id = ?`,
       [familyId]
     );
+
     let nextNum = (rows[0]?.maxNum || 0) + 1;
 
-    /** 4️⃣ Prepare UPSERT values, generate IDs for new members */
-    // Create a copy of familyProfile with generated resident_id values
+    /** 4️⃣ Generate resident IDs for new members */
     const updatedFamilyProfile = familyProfile.map(r => {
       let residentId = r.residentId;
+
       if (!residentId) {
-        // Generate resident ID for new member
-        residentId = `${familyId}-${nextNum}`;
+        residentId = `${residentBaseId}-${nextNum}`;
         nextNum++;
       }
 
-      // Return updated member with resident_id
       return {
         ...r,
         residentId
       };
     });
 
-    // Prepare values for database insertion
+    /** 5️⃣ Prepare DB values */
     const values = updatedFamilyProfile.map(r => [
       r.residentId,
       familyId,
@@ -460,15 +462,13 @@ export const syncPopulation = async (
       r.suffix || null,
       r.sex,
       formatDateForMySQL(r.birthdate),
-      r.verifiedBirthdate,
-      r.specifyId,
       r.civilStatus,
       r.religion,
       r.relationToFamilyHead,
       r.birthplace
     ]);
 
-    /** 5️⃣ UPSERT residents */
+    /** 6️⃣ UPSERT */
     await connection.query(
       `
       INSERT INTO population (
@@ -502,9 +502,8 @@ export const syncPopulation = async (
     );
 
     await connection.commit();
-    
-    // Return the updated family profile with generated resident_id values
     return updatedFamilyProfile;
+
   } catch (err) {
     await connection.rollback();
     throw err;

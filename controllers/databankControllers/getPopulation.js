@@ -17,7 +17,7 @@ export const getPopulation = async (req, res) => {
       FROM population p
       JOIN family_information fi ON p.family_id = fi.family_id
       JOIN households hi ON fi.household_id = hi.household_id
-      WHERE p.resident_id LIKE 'FID%'
+      WHERE p.resident_id LIKE 'RID%'
       ORDER BY name ASC;
     `);
     
