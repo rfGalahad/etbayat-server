@@ -259,7 +259,7 @@ export const insertFamilyData = async (connection, data) => {
       monthly_income,
       irregular_income,
       family_income
-    ) VALUES (?, ?, ?, ?, ?)`, 
+    ) VALUES (?, ?, ?, ?, ?, ?)`, 
     [
       data.familyId,
       data.householdId,
