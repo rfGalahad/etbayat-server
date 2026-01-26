@@ -18,7 +18,7 @@ export const getAllSurveys = async (req, res) => {
       LEFT JOIN family_information f
           ON f.survey_id = s.survey_id
       LEFT JOIN households h
-          ON h.household_id = f.household_id;
+          ON h.household_id = f.household_id
       `;
     let params = [];
 
