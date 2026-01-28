@@ -4,57 +4,58 @@ import { formatDateForMySQL, parseIncome } from "./helpers.js";
 // SURVEY DATA
 
 const prepareExpenseValues = (surveyId, expenses) => {
+  const getAmount = (key) => parseIncome(expenses?.[key] ?? 0);
 
   const foodExpenses = [
-    { type: 'Rice', amount: parseIncome(expenses['Rice']) },
-    { type: 'Viand', amount: parseIncome(expenses['Viand']) },
-    { type: 'Sugar', amount: parseIncome(expenses['Sugar']) },
-    { type: 'Milk', amount: parseIncome(expenses['Milk']) },
-    { type: 'Oil', amount: parseIncome(expenses['Oil']) },
-    { type: 'Snacks', amount: parseIncome(expenses['Snacks']) },
-    { type: 'Other Food Expenses', amount: parseIncome(expenses['Other Food Expenses']) },
+    { type: 'Rice', amount: getAmount('Rice') },
+    { type: 'Viand', amount: getAmount('Viand') },
+    { type: 'Sugar', amount: getAmount('Sugar') },
+    { type: 'Milk', amount: getAmount('Milk') },
+    { type: 'Cooking Oil / Condiments', amount: getAmount('Cooking Oil / Condiments') },
+    { type: 'Snacks', amount: getAmount('Snacks') },
+    { type: 'Other Food Expenses', amount: getAmount('Other Food Expenses') },
   ];
 
   const educationExpenses = [
-    { type: 'Tuition Fees', amount: parseIncome(expenses['Tuition Fees']) },
-    { type: 'Miscellaneous Fees', amount: parseIncome(expenses['Miscellaneous Fees']) },
-    { type: 'School Supplies', amount: parseIncome(expenses['School Supplies']) },
-    { type: 'Transportation', amount: parseIncome(expenses.Transportation) },
-    { type: 'Rent/Dormitory', amount: parseIncome(expenses['Rent/Dormitory']) },
-    { type: 'Other Education Expenses', amount: parseIncome(expenses['Other Education Expenses']) },
+    { type: 'Tuition Fees', amount: getAmount('Tuition Fees') },
+    { type: 'Miscellaneous Fees', amount: getAmount('Miscellaneous Fees') },
+    { type: 'School Supplies', amount: getAmount('School Supplies') },
+    { type: 'Transportation', amount: getAmount('Transportation') },
+    { type: 'Rent/Dormitory', amount: getAmount('Rent/Dormitory') },
+    { type: 'Other Education Expenses', amount: getAmount('Other Education Expenses') },
   ];
 
   const familyExpenses = [
-    { type: 'Firewood', amount: parseIncome(expenses.Firewood) },
-    { type: 'Gas Tank', amount: parseIncome(expenses['Gas Tank']) },
-    { type: 'Caregivers', amount: parseIncome(expenses.Caregivers) },
-    { type: 'Laundry', amount: parseIncome(expenses.Laundry) },
-    { type: 'Hygiene', amount: parseIncome(expenses.Hygiene) },
-    { type: 'Clothings', amount: parseIncome(expenses.Clothings) },
-    { type: 'Other Family Expenses', amount: parseIncome(expenses['Other Family Expenses']) },
+    { type: 'Firewood', amount: getAmount('Firewood') },
+    { type: 'Gas Tank', amount: getAmount('Gas Tank') },
+    { type: 'Caregivers', amount: getAmount('Caregivers') },
+    { type: 'Laundry (soap, etc.)', amount: getAmount('Laundry (soap, etc.)') },
+    { type: 'Hygiene (toothpaste, etc.)', amount: getAmount('Hygiene (toothpaste, etc.)') },
+    { type: 'Clothings (shoes, etc.)', amount: getAmount('Clothings (shoes, etc.)') },
+    { type: 'Other Family Expenses', amount: getAmount('Other Family Expenses') },
   ];
 
   const monthlyExpenses = [
-    { type: 'Electric Bill', amount: parseIncome(expenses['Electric Bill']) },
-    { type: 'Water Bill', amount: parseIncome(expenses['Water Bill']) },
-    { type: 'Subscription', amount: parseIncome(expenses.Subscription) },
-    { type: 'Mobile Load', amount: parseIncome(expenses['Mobile Load']) },
-    { type: 'Other Monthly Expenses', amount: parseIncome(expenses['Other Monthly Expenses']) },
+    { type: 'Electric Bill', amount: getAmount('Electric Bill') },
+    { type: 'Water Bill', amount: getAmount('Water Bill') },
+    { type: 'Subscription (e.g. Internet, Cable)', amount: getAmount('Subscription (e.g. Internet, Cable)') },
+    { type: 'Mobile Load', amount: getAmount('Mobile Load') },
+    { type: 'Other Monthly Expenses', amount: getAmount('Other Monthly Expenses') },
   ];
 
-  // Filter and map to database format
-  const filterAndMap = (expenseArray) => 
-    expenseArray
-      .filter(e => e.amount !== '' && e.amount !== null)
+  const filterAndMap = (arr) =>
+    arr
+      .filter(e => Number(e.amount) > 0)
       .map(e => [surveyId, e.type, e.amount]);
 
   return {
     food: filterAndMap(foodExpenses),
     education: filterAndMap(educationExpenses),
     family: filterAndMap(familyExpenses),
-    monthly: filterAndMap(monthlyExpenses)
+    monthly: filterAndMap(monthlyExpenses),
   };
 };
+
 
 const prepareLivestockValues = (surveyId, livestock) => {
   return Object.entries(livestock).map(
