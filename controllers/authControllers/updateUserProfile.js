@@ -7,12 +7,15 @@ export const updateUserProfile = async (req, res) => {
     const { userId } = req.user;
     const { username, name } = req.body;
 
-    // CHECK IF USERNAME IS ALREADY TAKEN (only if username is being updated)
+    console.log('USERNAME', username)
+
     if (username !== undefined) {
-      const existingUser = await pool.query(`
-        SELECT user_id FROM users WHERE username = ?`, [username]);
-      
-      if (existingUser.length > 0 && existingUser[0].user_id !== userId) {
+      const [rows] = await pool.query(
+        `SELECT user_id FROM users WHERE username = ?`,
+        [username]
+      );
+
+      if (rows.length > 0 && rows[0].user_id !== userId) {
         return res.status(400).json({
           error: "Username is already taken"
         });
