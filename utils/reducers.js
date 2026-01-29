@@ -35,7 +35,7 @@ export const expensesValueReducer = (keyField, valueField) => (rows) =>
     const rawKey = row[keyField];
     const labelKey = KEY_LABELS[rawKey] ?? rawKey;
 
-    acc[labelKey] = Number(row[valueField]) || 0;
+    acc[labelKey] = Math.trunc(Number(row[valueField]) || 0);
     return acc;
   }, {});
 

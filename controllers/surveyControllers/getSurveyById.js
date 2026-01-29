@@ -91,7 +91,7 @@ export const getSurveyById = async (req, res) => {
           pi.skills,
           pi.occupation,
           pi.employment_type as employmentType,
-          pi.monthly_income as monthlyIncome,
+          CAST(pi.monthly_income AS UNSIGNED) as monthlyIncome,
 
           ci.contact_number as contactNumber,
 
