@@ -1,6 +1,6 @@
 import pool from '../../config/db.js';
 import cloudinary from '../../config/cloudinary.js';
-import { base64ToBuffer } from '../../utils/helpers.js';
+import { base64ToBuffer, getNextFamilyId } from '../../utils/helpers.js';
 import { 
   syncAffiliatedMember, 
   syncContactInformation, 
@@ -15,8 +15,9 @@ import {
   updateSurveyData
 } from '../../services/surveyService/updateSurveyService.js';
 import { uploadToCloudinary } from '../../utils/cloudinaryUpload.js';
-import { prepareSurveyDataValues } from '../../utils/surveyDataTransformers.js';
+import { prepareServiceAvailedValues, prepareSurveyDataValues } from '../../utils/surveyDataTransformers.js';
 import { CLASSIFICATIONS } from '../../constants/surveyConstants.js';
+import { generateHouseholdId } from './generateId.js';
 
 export const updateSurvey = async (req, res) => {
 
@@ -51,6 +52,67 @@ export const updateSurvey = async (req, res) => {
       serviceAvailed,
       acknowledgement
     } = formData
+
+    const tempHouseholdId = await generateHouseholdId(connection);
+    let newHouseholdId = null;
+    let newFamilyId = null;
+
+    if (householdInformation.multipleFamily) {
+      console.log('🏠 Multiple family household detected');
+      console.log('Searching for existing family head:', {
+        firstName: householdInformation.familyHeadFirstName,
+        middleName: householdInformation.familyHeadMiddleName || null,
+        lastName: householdInformation.familyHeadLastName,
+        suffix: householdInformation.familyHeadSuffix || null
+      });
+
+      const [existingPerson] = await connection.query(`
+        SELECT p.family_id, f.household_id
+        FROM population p
+        JOIN family_information f ON f.family_id = p.family_id
+        WHERE p.first_name = ?
+          AND (p.middle_name <=> ?)
+          AND p.last_name = ?
+          AND (p.suffix <=> ?)
+          AND p.relation_to_family_head = 'Family Head'
+        LIMIT 1
+      `, [
+        householdInformation.familyHeadFirstName,
+        householdInformation.familyHeadMiddleName || null,
+        householdInformation.familyHeadLastName,
+        householdInformation.familyHeadSuffix || null
+      ]);
+
+      console.log('Query result for existing person:', existingPerson);
+
+      if (existingPerson.length > 0) {
+        console.log('✅ Existing family head found:', existingPerson[0]);
+
+        newHouseholdId = existingPerson[0].household_id;
+
+        // Get latest family_id under the same household
+        const [latestFamily] = await connection.query(`
+          SELECT family_id
+          FROM family_information
+          WHERE household_id = ?
+          ORDER BY family_id DESC
+          LIMIT 1
+        `, [newHouseholdId]);
+
+        console.log('Latest family in household:', latestFamily[0]);
+
+        newFamilyId = getNextFamilyId(
+          latestFamily[0]?.family_id,
+          newHouseholdId.replace('HID-', '')
+        );
+
+        console.log('Generated new familyId:', familyId);
+
+      } else {
+        console.log('❌ Family head not found. Will not update household and family IDs.');
+        console.log({ householdId, familyId });
+      }
+    }
 
     // UPLOAD IMAGES TO CLOUDINARY    
     /*
@@ -128,41 +190,19 @@ export const updateSurvey = async (req, res) => {
       farmlots,
       communityIssues
     });    
-    
-    
+
     ///////////////////////////////////////////////
 
-    // UPDATE HOUSEHOLD DATA
-
-    await updateHouseholdData(connection, {
-      householdId,
-      householdInformation,
-      waterInformation
-    });
-
-    // HOUSE IMAGES
-
-    ////////////////////////////////////////////////
-
-    // UPDATE FAMILY DATA
-
-    await updateFamilyData(connection, {
-      familyId,
-      familyInformation,
-      serviceAvailed
-    });
-
-    ////////////////////////////////////////////////
 
     // UPDATE POPULATION / RESIDENT
-
-    
 
     const updatedFamilyProfile =  await syncPopulation(
       connection, 
       familyId, 
-      familyProfile
+      familyProfile,
+      newFamilyId
     );
+    
     await syncSocialClassifications(
       connection, 
       updatedFamilyProfile, 
@@ -174,9 +214,48 @@ export const updateSurvey = async (req, res) => {
     await syncGovernmentId(connection, updatedFamilyProfile);
     await syncAffiliatedMember(connection, updatedFamilyProfile);
     await syncNonIvatanMember(connection, updatedFamilyProfile);
+    
+    
+    ///////////////////////////////////////////////
+
+    // UPDATE FAMILY DATA
+
+    const serviceAvailedValues = prepareServiceAvailedValues(
+      newFamilyId, 
+      serviceAvailed
+    );
+
+    await updateFamilyData(connection, {
+      surveyId,
+      familyId,
+      newFamilyId,
+      newHouseholdId,
+      familyInformation,
+      serviceAvailed,
+      householdInformation,
+      serviceAvailedValues
+    });
 
     ////////////////////////////////////////////////
 
+    // UPDATE HOUSEHOLD DATA
+
+    await updateHouseholdData(connection, {
+      householdId,
+      newHouseholdId,
+      householdInformation,
+      waterInformation,
+      houseImages
+    });
+
+    // HOUSE IMAGES
+
+    ////////////////////////////////////////////////
+
+    
+
+    ////////////////////////////////////////////////
+    
     await connection.commit();
 
     return res.status(200).json({ 

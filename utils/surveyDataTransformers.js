@@ -180,9 +180,9 @@ const preparePopulationValues = (familyId, familyProfile) => {
   return familyProfile.map((member, index) => [ 
     member.residentId,
     familyId, 
-    member.firstName || null,
-    member.middleName || null,
-    member.lastName || null,
+    member.firstName.trim() || null,
+    member.middleName.trim() || null,
+    member.lastName.trim() || null,
     member.suffix || null,
     member.sex || null,
     formatDateForMySQL(member.birthdate) || null,

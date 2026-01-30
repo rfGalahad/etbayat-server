@@ -1,3 +1,4 @@
+import { generateHouseholdId } from "../../controllers/surveyControllers/generateId.js";
 import { formatDateForMySQL, parseIncome } from "../../utils/helpers.js";
 
 // UPDATE SURVEY DATA
@@ -46,7 +47,7 @@ export const updateSurveyData = async (connection, data) => {
     SET respondent = ?
     WHERE survey_id = ?`,
     [
-      data.respondent,
+      data.respondent.trim(),
       data.surveyId
     ]
   );
@@ -222,31 +223,106 @@ export const updateSurveyData = async (connection, data) => {
 // UPDATE HOUSEHOLD DATA
 
 export const updateHouseholdData = async (connection, data) => {
- 
-  // HOUSEHOLDS
-  await connection.query(`
-    UPDATE households  
-    SET house_structure = ?,
-        house_condition = ?,
-        latitude = ?,
-        longitude = ?,
-        street = ?,
-        barangay = ?,
-        multiple_family = ?
-    WHERE household_id = ?`, 
-    [
+
+  if (data.newHouseholdId) {
+    console.log('NEW FAMILY ID DETECTED:', data.newFamilyId);
+    
+    // DELETE OLD HOUSEHOLD DATA
+    await connection.query(`
+      DELETE 
+      FROM households 
+      WHERE household_id = ?`, 
+      [data.householdId]
+    )
+
+    // INSERT IGNORE NEW HOUSEHOLD
+    await connection.query(`
+      INSERT IGNORE INTO households (
+        household_id,
+        house_structure,
+        house_condition,
+        latitude,
+        longitude,
+        street,
+        barangay,
+        municipality,
+        multiple_family
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `, [
+      data.newHouseholdId,
       data.householdInformation?.houseStructure ?? null,
       data.householdInformation?.houseCondition ?? null,
       data.householdInformation?.position?.[0] ?? null,
       data.householdInformation?.position?.[1] ?? null,
-      data.householdInformation?.houseStreet ?? null,
+      data.householdInformation?.houseStreet.trim() ?? null,
       data.householdInformation?.barangay ?? null,
-      data.householdInformation?.multipleFamily ?? null,
-      data.householdId
-    ]
-  );
+      data.householdInformation?.municipality ?? null,
+      data.householdInformation?.multipleFamily ?? null
+    ]);
 
-  // WATER INFORMATION
+    // INSERT NEW HOUSE IMAGES
+    const imageValues = data.houseImages.map((img, index) => [ 
+      data.newHouseholdId, 
+      img.url, 
+      img.publicId, 
+      data.householdInformation.houseImageTitles[index] 
+    ]);
+
+    if (imageValues.length > 0) {
+      await connection.query(
+        `INSERT INTO house_images (
+          household_id,
+          house_image_url, 
+          house_image_public_id,
+          house_image_title
+        ) VALUES ?`,
+        [imageValues]
+      );
+    }
+
+    // INSERT NEW WATER INFORMATION
+    await connection.query(
+      `INSERT INTO water_information (
+        household_id,
+        water_access,
+        potable_water,
+        water_sources
+      ) VALUES (?, ?, ?, ?)
+      `,
+      [
+        data.newHouseholdId,
+        data.waterInformation.waterAccess === 'YES',
+        data.waterInformation.potableWater === 'YES',
+        data.waterInformation.waterSources?.join(', ') || null
+      ]
+    );  
+
+  } else {
+
+    // UPDATE HOUSEHOLD WITH OLD HOUSEHOLD ID
+    await connection.query(`
+      UPDATE households  
+      SET house_structure = ?,
+          house_condition = ?,
+          latitude = ?,
+          longitude = ?,
+          street = ?,
+          barangay = ?,
+          multiple_family = ?
+      WHERE household_id = ?`, 
+      [
+        data.householdInformation?.houseStructure ?? null,
+        data.householdInformation?.houseCondition ?? null,
+        data.householdInformation?.position?.[0] ?? null,
+        data.householdInformation?.position?.[1] ?? null,
+        data.householdInformation?.houseStreet ?? null,
+        data.householdInformation?.barangay ?? null,
+        data.householdInformation?.multipleFamily ?? null,
+        data.householdId
+      ]
+    )
+
+  // UPDATE WATER INFORMATION WITH OLD HOUSEHOLD ID
   await connection.query(`
     UPDATE water_information 
     SET water_access = ?,
@@ -260,10 +336,8 @@ export const updateHouseholdData = async (connection, data) => {
       data.waterInformation.waterInformationId
     ]
   );
+  }
 };
-
-// UPDATE HOUSE IMAGES
-
 
 ///////////////////////////////////////////////////////////////////
 
@@ -363,30 +437,80 @@ const syncServiceAvailed = async (
 
 export const updateFamilyData = async (connection, data) => {
 
-  // FAMILY INFORMATION
-  await connection.query(`
-    UPDATE family_information 
-    SET family_class = ?,
-        monthly_income = ?,
-        irregular_income = ?,
-        family_income = ?
-    WHERE family_id = ?`, 
-    [
-      data.familyInformation?.familyClass ?? null,
-      parseIncome(data.familyInformation?.monthlyIncome) || 0,
-      parseIncome(data.familyInformation?.irregularIncome) || 0,
-      parseIncome(data.familyInformation?.familyIncome) || 0,
-      data.familyId
-    ]
-  );
+  if (data.newFamilyId) {
+    console.log('NEW FAMILY ID DETECTED:', data.newFamilyId);
+    
+    // DELETE OLD FAMILY INFORMATION
+    await connection.query(`
+      DELETE 
+      FROM family_information 
+      WHERE family_Id = ?`, 
+      [data.familyId]
+    )
 
-  // SYNC SERVICE AVAILED
-  syncServiceAvailed(
-    connection, 
-    data.familyId,
-    data.serviceAvailed
-  );
-  
+    // INSERT NEW FAMILY INFORMATION
+    await connection.query(
+      `INSERT INTO family_information (
+        family_id,
+        household_id,
+        survey_id,
+        monthly_income,
+        irregular_income,
+        family_income
+      ) VALUES (?, ?, ?, ?, ?, ?)`, 
+      [
+        data.newFamilyId,
+        data.newHouseholdId,
+        data.surveyId,
+        parseIncome(data.familyInformation?.monthlyIncome) ?? 0,
+        parseIncome(data.familyInformation?.irregularIncome) ?? 0,
+        parseIncome(data.familyInformation?.familyIncome) ?? 0,
+      ]
+    );
+
+    // INSERT NEW SERVICE AVAILED
+    if (data.serviceAvailedValues.length > 0) {
+      await connection.query(
+        `INSERT INTO service_availed (
+          family_id,
+          date_service_availed,
+          ngo_name,
+          service_availed, 
+          male_served,
+          female_served,
+          how_service_help
+        ) VALUES ?`, 
+        [data.serviceAvailedValues]
+      );
+    }
+
+    
+  } else {
+
+    // UPDATE FAMILY INFORMATION WITH OLD FAMILY ID
+    await connection.query(`
+      UPDATE family_information 
+      SET family_class = ?,
+          monthly_income = ?,
+          irregular_income = ?,
+          family_income = ?
+      WHERE family_id = ?`, 
+      [
+        data.familyInformation?.familyClass ?? null,
+        parseIncome(data.familyInformation?.monthlyIncome) || 0,
+        parseIncome(data.familyInformation?.irregularIncome) || 0,
+        parseIncome(data.familyInformation?.familyIncome) || 0,
+        data.familyId
+      ]
+    );
+
+    // SYNC SERVICE AVAILED
+    syncServiceAvailed(
+      connection, 
+      data.familyId,
+      data.serviceAvailed
+    );
+  }
 };
 
 
@@ -397,18 +521,94 @@ export const updateFamilyData = async (connection, data) => {
 export const syncPopulation = async (
   connection,
   familyId,
-  familyProfile
+  familyProfile,
+  newFamilyId = null
 ) => {
   await connection.beginTransaction();
 
   try {
-    // 🔹 Convert FID → RID once
-    const residentBaseId = familyId.replace(/^FID/, 'RID');
+    const targetFamilyId = newFamilyId || familyId;
+    const residentBaseId = targetFamilyId.replace(/^FID/, 'RID');
 
     /** 1️⃣ Collect resident IDs sent by client */
     const existingResidentIds = familyProfile
       .filter(r => r.residentId)
       .map(r => r.residentId);
+
+    /** 🔹 IF newFamilyId exists, we need to handle the migration differently */
+    if (newFamilyId && existingResidentIds.length > 0) {
+      // Step 1: Temporarily disable foreign key checks
+      await connection.query('SET FOREIGN_KEY_CHECKS = 0');
+
+      // Step 2: Create mapping and update all tables
+      for (let i = 0; i < existingResidentIds.length; i++) {
+        const oldResidentId = existingResidentIds[i];
+        const numberSuffix = oldResidentId.split('-').pop();
+        const newResidentId = `${residentBaseId}-${numberSuffix}`;
+
+        // Update all tables in one go
+        await connection.query(
+          `UPDATE social_classification SET resident_id = ? WHERE resident_id = ?`,
+          [newResidentId, oldResidentId]
+        );
+
+        await connection.query(
+          `UPDATE professional_information SET resident_id = ? WHERE resident_id = ?`,
+          [newResidentId, oldResidentId]
+        );
+
+        await connection.query(
+          `UPDATE contact_information SET resident_id = ? WHERE resident_id = ?`,
+          [newResidentId, oldResidentId]
+        );
+
+        await connection.query(
+          `UPDATE health_information SET resident_id = ? WHERE resident_id = ?`,
+          [newResidentId, oldResidentId]
+        );
+
+        await connection.query(
+          `UPDATE government_ids SET resident_id = ? WHERE resident_id = ?`,
+          [newResidentId, oldResidentId]
+        );
+
+        await connection.query(
+          `UPDATE affiliation SET resident_id = ? WHERE resident_id = ?`,
+          [newResidentId, oldResidentId]
+        );
+
+        await connection.query(
+          `UPDATE non_ivatan SET resident_id = ? WHERE resident_id = ?`,
+          [newResidentId, oldResidentId]
+        );
+
+        // Update population table
+        await connection.query(
+          `UPDATE population 
+           SET family_id = ?, resident_id = ?
+           WHERE resident_id = ? AND family_id = ?`,
+          [targetFamilyId, newResidentId, oldResidentId, familyId]
+        );
+
+        // Update the ID in the array
+        existingResidentIds[i] = newResidentId;
+      }
+
+      // Step 3: Re-enable foreign key checks
+      await connection.query('SET FOREIGN_KEY_CHECKS = 1');
+
+      // Update familyProfile with new IDs
+      familyProfile = familyProfile.map(r => {
+        if (r.residentId) {
+          const numberSuffix = r.residentId.split('-').pop();
+          return {
+            ...r,
+            residentId: `${residentBaseId}-${numberSuffix}`
+          };
+        }
+        return r;
+      });
+    }
 
     /** 2️⃣ DELETE removed residents */
     if (existingResidentIds.length > 0) {
@@ -416,12 +616,12 @@ export const syncPopulation = async (
         `DELETE FROM population
          WHERE family_id = ?
            AND resident_id NOT IN (?)`,
-        [familyId, existingResidentIds]
+        [targetFamilyId, existingResidentIds]
       );
     } else {
       await connection.query(
         `DELETE FROM population WHERE family_id = ?`,
-        [familyId]
+        [targetFamilyId]
       );
     }
 
@@ -432,7 +632,7 @@ export const syncPopulation = async (
         ) AS maxNum
        FROM population
        WHERE family_id = ?`,
-      [familyId]
+      [targetFamilyId]
     );
 
     let nextNum = (rows[0]?.maxNum || 0) + 1;
@@ -455,7 +655,7 @@ export const syncPopulation = async (
     /** 5️⃣ Prepare DB values */
     const values = updatedFamilyProfile.map(r => [
       r.residentId,
-      familyId,
+      targetFamilyId,
       r.firstName,
       r.middleName,
       r.lastName,

@@ -27,7 +27,7 @@ export const insertSurveyData = async (connection, data) => {
     [
       data.surveyId,
       data.userId,
-      data.respondent,
+      data.respondent.trim(),
       data.respondentPhoto?.url || null,
       data.respondentPhoto?.publicId || null,
       data.respondentSignature?.url || null,
@@ -212,7 +212,7 @@ export const insertHouseholdData = async (connection, data) => {
     data.householdInformation?.houseCondition ?? null,
     data.householdInformation?.position?.[0] ?? null,
     data.householdInformation?.position?.[1] ?? null,
-    data.householdInformation?.houseStreet ?? null,
+    data.householdInformation?.houseStreet.trim() ?? null,
     data.householdInformation?.barangay ?? null,
     data.householdInformation?.municipality ?? null,
     data.householdInformation?.multipleFamily ?? null
