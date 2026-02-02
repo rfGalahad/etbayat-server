@@ -25,10 +25,10 @@ export const getSurveyById = async (req, res) => {
 
     const [familyRows] = await connection.query(`
       SELECT 
-        s.respondent_first_name,
-        s.respondent_middle_name,
-        s.respondent_last_name,
-        s.respondent_suffix,
+        s.respondent_first_name as respondentFirstName,
+        s.respondent_middle_name as respondentMiddleName,
+        s.respondent_last_name as respondentLastName,
+        s.respondent_suffix as respondentSuffix,
         f.family_id as familyId,
         f.irregular_income AS irregularIncome,
         f.family_class AS familyClass,
