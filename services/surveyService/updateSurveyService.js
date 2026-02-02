@@ -44,7 +44,10 @@ export const updateSurveyData = async (connection, data) => {
   // UPDATE SURVEY
   await connection.query(`
     UPDATE surveys 
-    SET respondent = ?
+    SET respondent_first_name = ?,
+        respondent_middle_name = ?,
+        respondent_last_name = ?,
+        respondent_suffix = ?
     WHERE survey_id = ?`,
     [
       data.familyInformation.respondentFirstName.trim(),

@@ -26,9 +26,23 @@ export const deleteSurvey = async (req, res) => {
 
     const householdId = familyRows?.[0]?.householdId;
 
-    // 3️⃣ Get house images (if household exists)
-    let houseImagesRows = [];
+    // 3️⃣ Check if household has OTHER surveys/families BEFORE deleting current survey
+    let shouldDeleteHousehold = false;
     if (householdId) {
+      const [otherFamilies] = await pool.query(
+        `SELECT COUNT(*) AS count
+         FROM family_information
+         WHERE household_id = ? AND survey_id != ?`,
+        [householdId, surveyId]
+      );
+
+      // Only delete household if no OTHER families reference it
+      shouldDeleteHousehold = otherFamilies[0].count === 0;
+    }
+
+    // 4️⃣ Get house images (if household exists and will be deleted)
+    let houseImagesRows = [];
+    if (householdId && shouldDeleteHousehold) {
       [houseImagesRows] = await pool.query(
         `SELECT house_image_public_id AS houseImagePublicId
          FROM house_images
@@ -37,7 +51,7 @@ export const deleteSurvey = async (req, res) => {
       );
     }
 
-    // 4️⃣ Collect Cloudinary public IDs
+    // 5️⃣ Collect Cloudinary public IDs
     const publicIdsToDelete = [];
 
     if (houseImagesRows.length > 0) {
@@ -52,18 +66,20 @@ export const deleteSurvey = async (req, res) => {
       );
     }
 
-    // 5️⃣ Delete images from Cloudinary
+    // 6️⃣ Delete images from Cloudinary
     if (publicIdsToDelete.length > 0) {
       await deleteMultipleFromCloudinary(publicIdsToDelete);
     }
-    
-    // DELETE HOUSEHOLD
-    await pool.query(`
-      DELETE FROM households WHERE household_id = ?`,
-      [householdId]
-    );
 
-    // 6️⃣ Delete survey
+    // 7️⃣ Delete household FIRST (if needed) - this will cascade delete family_information
+    if (householdId && shouldDeleteHousehold) {
+      await pool.query(
+        `DELETE FROM households WHERE household_id = ?`,
+        [householdId]
+      );
+    }
+
+    // 8️⃣ Delete survey - this will cascade delete family_information if household wasn't deleted
     await pool.query(
       `DELETE FROM surveys WHERE survey_id = ?`,
       [surveyId]
