@@ -15,7 +15,7 @@ export const getFamily = async (req, res) => {
           h.barangay
       FROM population p
       JOIN family_information fi ON fi.family_id = p.family_id
-      JOIN service_availed s ON s.family_id = p.family_id
+      LEFT JOIN service_availed s ON s.family_id = p.family_id
       JOIN households h ON fi.household_id = h.household_id
       WHERE p.relation_to_family_head = 'Family Head';
     `);

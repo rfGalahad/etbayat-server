@@ -17,6 +17,7 @@ export const getHousehold = async (req, res) => {
           ) AS family_head_names,
           h.house_structure,
           h.house_condition,
+          h.street,
           h.barangay
       FROM population p
       JOIN family_information f
