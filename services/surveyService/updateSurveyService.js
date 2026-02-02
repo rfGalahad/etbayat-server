@@ -40,6 +40,8 @@ const bulkUpsert = async (
 export const updateSurveyData = async (connection, data) => {
 
   const surveyData = data.surveyData;
+
+  console.log('FAMILY', data.familyInformation)
   
   // UPDATE SURVEY
   await connection.query(`
