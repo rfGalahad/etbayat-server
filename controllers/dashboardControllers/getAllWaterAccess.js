@@ -6,11 +6,17 @@ export const getAllWaterAccess = async (req, res) => {
       SELECT
           h.barangay,
           COUNT(DISTINCT h.household_id) AS total_households,
-          SUM(CASE WHEN w.water_access = TRUE THEN 1 ELSE 0 END) AS households_with_water_access,
-          SUM(CASE WHEN w.potable_water = TRUE THEN 1 ELSE 0 END) AS households_with_potable_water
+          COUNT(DISTINCT CASE 
+              WHEN w.water_access = TRUE THEN h.household_id 
+          END) AS households_with_water_access,
+          COUNT(DISTINCT CASE 
+              WHEN w.potable_water = TRUE THEN h.household_id 
+          END) AS households_with_potable_water
       FROM households h
+      LEFT JOIN family_information f
+          ON f.household_id = h.household_id
       LEFT JOIN water_information w
-          ON h.household_id = w.household_id
+          ON w.survey_id = f.survey_id
       GROUP BY h.barangay;
     `);
   

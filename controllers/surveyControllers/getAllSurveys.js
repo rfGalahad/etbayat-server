@@ -7,7 +7,12 @@ export const getAllSurveys = async (req, res) => {
     let query = `
       SELECT  
           s.survey_id,
-          s.respondent,
+          CONCAT(
+              s.respondent_last_name, ', ',
+              s.respondent_first_name,
+              IF(s.respondent_middle_name IS NOT NULL AND s.respondent_middle_name <> '', CONCAT(' ', s.respondent_middle_name), ''),
+              IF(s.respondent_suffix IS NOT NULL AND s.respondent_suffix <> '', CONCAT(' ', s.respondent_suffix), '')
+          ) AS fullName,
           s.created_at,
           u.name AS interviewer,
           u.role,

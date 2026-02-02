@@ -17,6 +17,18 @@ router.get('/population',
   dashboardController.getAllPopulation
 );
 
+// GET ALL FAMILY
+router.get('/family', 
+  authenticateToken, 
+  dashboardController.getAllFamily
+);
+
+// GET ALL HOUSEHOLD
+router.get('/household', 
+  authenticateToken, 
+  dashboardController.getAllHousehold
+);
+
 // GET FEMALE AGE SEGREGATION
 router.get('/ageSegregation/female', 
   authenticateToken, 

@@ -56,9 +56,14 @@ export const deleteSurvey = async (req, res) => {
     if (publicIdsToDelete.length > 0) {
       await deleteMultipleFromCloudinary(publicIdsToDelete);
     }
+    
+    // DELETE HOUSEHOLD
+    await pool.query(`
+      DELETE FROM households WHERE household_id = ?`,
+      [householdId]
+    );
 
     // 6️⃣ Delete survey
-    // CASCADE will delete family_information row automatically
     await pool.query(
       `DELETE FROM surveys WHERE survey_id = ?`,
       [surveyId]

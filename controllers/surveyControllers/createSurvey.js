@@ -181,12 +181,13 @@ export const createSurvey = async (req, res) => {
     await insertSurveyData(connection, { 
       surveyId, 
       userId, 
-      respondent: familyInformation.respondent,
+      familyInformation,
       respondentPhoto,
       respondentSignature,
       surveyData,
       farmlots,
-      communityIssues
+      communityIssues,
+      waterInformation
     });
 
     ////////////////////////////////////////////////
@@ -204,8 +205,7 @@ export const createSurvey = async (req, res) => {
       householdId, 
       surveyId, 
       householdInformation,
-      imageValues,
-      waterInformation
+      imageValues
     });
 
     ////////////////////////////////////////////////

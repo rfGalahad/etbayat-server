@@ -27,7 +27,10 @@ export const insertSurveyData = async (connection, data) => {
     [
       data.surveyId,
       data.userId,
-      data.respondent.trim(),
+      data.familyInformation.respondentFirstName.trim(),
+      data.familyInformation.respondentMiddleName.trim(),
+      data.familyInformation.respondentLastName.trim(),
+      data.familyInformation.respondentSuffix.trim(),
       data.respondentPhoto?.url || null,
       data.respondentPhoto?.publicId || null,
       data.respondentSignature?.url || null,
@@ -189,6 +192,23 @@ export const insertSurveyData = async (connection, data) => {
       ]
     );
   }
+
+  // WATER INFORMATION
+  await connection.query(
+    `INSERT INTO water_information (
+      survey_id,
+      water_access,
+      potable_water,
+      water_sources
+    ) VALUES (?, ?, ?, ?)
+    `,
+    [
+      data.surveyId,
+      data.waterInformation.waterAccess === 'YES',
+      data.waterInformation.potableWater === 'YES',
+      data.waterInformation.waterSources?.join(', ') || null
+    ]
+  );  
 };
 
 export const insertHouseholdData = async (connection, data) => {
@@ -204,8 +224,12 @@ export const insertHouseholdData = async (connection, data) => {
       street,
       barangay,
       municipality,
-      multiple_family
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      multiple_family,
+      family_head_first_name,
+      family_head_middle_name,
+      family_head_last_name,
+      family_head_suffix
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `, [
     data.householdId,
     data.householdInformation?.houseStructure ?? null,
@@ -215,7 +239,11 @@ export const insertHouseholdData = async (connection, data) => {
     data.householdInformation?.houseStreet.trim() ?? null,
     data.householdInformation?.barangay ?? null,
     data.householdInformation?.municipality ?? null,
-    data.householdInformation?.multipleFamily ?? null
+    data.householdInformation?.multipleFamily ?? null,
+    data.householdInformation?.familyHeadFirstName.trim() ?? null,
+    data.householdInformation?.familyHeadMiddleName.trim() ?? null,
+    data.householdInformation?.familyHeadLastName.trim() ?? null,
+    data.householdInformation?.familyHeadSuffix.trim() ?? null
   ]);
 
   // HOUSE IMAGES
@@ -230,23 +258,6 @@ export const insertHouseholdData = async (connection, data) => {
       [data.imageValues]
     );
   }
-
-  // WATER INFORMATION
-  await connection.query(
-    `INSERT INTO water_information (
-      household_id,
-      water_access,
-      potable_water,
-      water_sources
-    ) VALUES (?, ?, ?, ?)
-    `,
-    [
-      data.householdId,
-      data.waterInformation.waterAccess === 'YES',
-      data.waterInformation.potableWater === 'YES',
-      data.waterInformation.waterSources?.join(', ') || null
-    ]
-  );  
 };
 
 export const insertFamilyData = async (connection, data) => {

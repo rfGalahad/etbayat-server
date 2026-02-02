@@ -1,7 +1,13 @@
 import pool from '../../config/db.js';
 import cloudinary from '../../config/cloudinary.js';
-import { base64ToBuffer, getNextFamilyId } from '../../utils/helpers.js';
 import { 
+  base64ToBuffer, 
+  formatDateForMySQL, 
+  parseIncome 
+} from '../../utils/helpers.js';
+import { 
+  cleanupOldHousehold,
+  migrateFamilyToNewHousehold,
   syncAffiliatedMember, 
   syncContactInformation, 
   syncGovernmentId, 
@@ -10,14 +16,19 @@ import {
   syncPopulation, 
   syncProfessionalInformation, 
   syncSocialClassifications,  
-  updateFamilyData, 
+  updateFamilyInformation,  
   updateHouseholdData,  
-  updateSurveyData
+  updateSurveyData,
+  upsertHouseholdData
 } from '../../services/surveyService/updateSurveyService.js';
-import { uploadToCloudinary } from '../../utils/cloudinaryUpload.js';
-import { prepareServiceAvailedValues, prepareSurveyDataValues } from '../../utils/surveyDataTransformers.js';
+import { 
+  deleteMultipleFromCloudinary, 
+  uploadMultipleToCloudinary, 
+  uploadToCloudinary 
+} from '../../utils/cloudinaryUpload.js';
+import { prepareSurveyDataValues } from '../../utils/surveyDataTransformers.js';
 import { CLASSIFICATIONS } from '../../constants/surveyConstants.js';
-import { generateHouseholdId } from './generateId.js';
+import { apiError } from '../../utils/apiError.js';
 
 export const updateSurvey = async (req, res) => {
 
@@ -51,124 +62,110 @@ export const updateSurvey = async (req, res) => {
       communityIssues,
       serviceAvailed,
       acknowledgement
-    } = formData
+    } = formData;
 
-    const tempHouseholdId = await generateHouseholdId(connection);
+    // ================================================
+    // STEP 1: DETERMINE NEW HOUSEHOLD & FAMILY IDs
+    // ================================================
+
     let newHouseholdId = null;
     let newFamilyId = null;
+    let shouldMigrateToExistingHousehold = false;
 
-    if (householdInformation.multipleFamily) {
-      console.log('🏠 Multiple family household detected');
-      console.log('Searching for existing family head:', {
-        firstName: householdInformation.familyHeadFirstName,
-        middleName: householdInformation.familyHeadMiddleName || null,
-        lastName: householdInformation.familyHeadLastName,
-        suffix: householdInformation.familyHeadSuffix || null
+    if (householdInformation.multipleFamily && !householdInformation.alreadyMultipleFamily) {
+      console.log('🏠 MULTIPLE FAMILY UPDATE DETECTED');
+
+      const familyHeadResult = await findExistingFamilyHead(connection, {
+        firstName: householdInformation.familyHeadFirstName?.trim(),
+        middleName: householdInformation.familyHeadMiddleName?.trim() || null,
+        lastName: householdInformation.familyHeadLastName?.trim(),
+        suffix: householdInformation.familyHeadSuffix?.trim() || null
       });
 
-      const [existingPerson] = await connection.query(`
-        SELECT p.family_id, f.household_id
-        FROM population p
-        JOIN family_information f ON f.family_id = p.family_id
-        WHERE p.first_name = ?
-          AND (p.middle_name <=> ?)
-          AND p.last_name = ?
-          AND (p.suffix <=> ?)
-          AND p.relation_to_family_head = 'Family Head'
-        LIMIT 1
-      `, [
-        householdInformation.familyHeadFirstName,
-        householdInformation.familyHeadMiddleName || null,
-        householdInformation.familyHeadLastName,
-        householdInformation.familyHeadSuffix || null
-      ]);
+      if (familyHeadResult) {
+        shouldMigrateToExistingHousehold = true;
+        newHouseholdId = familyHeadResult.household_id;
+        
+        // Generate new family ID under the existing household
+        newFamilyId = await generateNextFamilyId(connection, newHouseholdId);
 
-      console.log('Query result for existing person:', existingPerson);
-
-      if (existingPerson.length > 0) {
-        console.log('✅ Existing family head found:', existingPerson[0]);
-
-        newHouseholdId = existingPerson[0].household_id;
-
-        // Get latest family_id under the same household
-        const [latestFamily] = await connection.query(`
-          SELECT family_id
-          FROM family_information
-          WHERE household_id = ?
-          ORDER BY family_id DESC
-          LIMIT 1
-        `, [newHouseholdId]);
-
-        console.log('Latest family in household:', latestFamily[0]);
-
-        newFamilyId = getNextFamilyId(
-          latestFamily[0]?.family_id,
-          newHouseholdId.replace('HID-', '')
-        );
-
-        console.log('Generated new familyId:', familyId);
-
+        console.log('✅ MIGRATION TO EXISTING HOUSEHOLD:', {
+          oldHouseholdId: householdId,
+          oldFamilyId: familyId,
+          newHouseholdId,
+          newFamilyId
+        });
       } else {
-        console.log('❌ Family head not found. Will not update household and family IDs.');
-        console.log({ householdId, familyId });
+        console.log('❌ FAMILY HEAD NOT FOUND - keeping original IDs');
       }
     }
 
-    // UPLOAD IMAGES TO CLOUDINARY    
-    /*
+    // ================================================
+    // STEP 2.1: DELETE IMAGES FROM  CLOUDINARY AND DATABASE
+    // ================================================
+
+    if (
+      householdInformation.publicIdToDelete?.length > 0 &&
+      householdInformation.imageIdToDelete?.length > 0
+    ) {
+      // 1. DELETE IMAGES FROM CLOUDINARY
+      await deleteMultipleFromCloudinary(
+        householdInformation.publicIdToDelete
+      );
+
+      // 2. DELETE IMAGES FROM DATABASE
+      const deleteImagesQuery = `
+        DELETE FROM house_images
+        WHERE house_image_id IN (?)
+      `;
+
+      await connection.query(deleteImagesQuery, [
+        householdInformation.imageIdToDelete
+      ]);
+    }
+
+    // ================================================
+    // STEP 2.2: UPLOAD IMAGES TO CLOUDINARY
+    // ================================================
+
     if (req.files?.houseImages) {
-      console.log('Uploading house images to Cloudinary...');
+      console.log('UPLOADING HOUSE IMAGES...')
       houseImages = await uploadMultipleToCloudinary(
         req.files.houseImages, 
         'surveys/house-images'
       );
-      console.log('House images uploaded:', houseImages);
     }
-    */
 
     if (req.files?.respondentPhoto?.[0]) {
-      // REMOVE PUBLIC ID
-      if(acknowledgement?.respondentSignatureId) {
-        await cloudinary.uploader.destroy(acknowledgement?.respondentSignatureId);
-      } else if (acknowledgement?.respondentPhotoId) {
-        await cloudinary.uploader.destroy(acknowledgement?.respondentPhotoId);
+      if (acknowledgement?.respondentPhotoId) {
+        await cloudinary.uploader.destroy(acknowledgement.respondentPhotoId);
       }
       
-      // UPLOAD TO CLOUDINARY
       respondentPhoto = await uploadToCloudinary(
         req.files.respondentPhoto[0].buffer,
         'surveys/respondent-photos',
         req.files.respondentPhoto[0].originalname
       );
-
-      console.log('Respondent photo uploaded:', respondentPhoto.url);
     }
 
-    const isNewSignature =
-      acknowledgement.respondentSignature?.startsWith('data:image/');
-
+    const isNewSignature = acknowledgement.respondentSignature?.startsWith('data:image/');
+    
     if (isNewSignature) {
-      // REMOVE PUBLIC ID
-      if(acknowledgement?.respondentPhotoId) {
-        await cloudinary.uploader.destroy(acknowledgement?.respondentPhotoId);
-      } else if (acknowledgement?.respondentSignaturePublicId) {
-        await cloudinary.uploader.destroy(acknowledgement?.respondentSignaturePublicId);
+      if (acknowledgement?.respondentSignaturePublicId) {
+        await cloudinary.uploader.destroy(acknowledgement.respondentSignaturePublicId);
       }
 
-      // UPLOAD TO CLOUDINARY
       const signatureBuffer = base64ToBuffer(acknowledgement.respondentSignature);
       respondentSignature = await uploadToCloudinary(
         signatureBuffer,
         'surveys/respondent-signatures',
         'respondent-signature'
       );
-
-      console.log('Respondent signature uploaded:', respondentSignature.url);
     }
-    
-    ////////////////////////////////////////////////
 
-    // UPDATE SURVEY DATA
+    // ================================================
+    // STEP 3: UPDATE SURVEY DATA
+    // ================================================
 
     const surveyData = prepareSurveyDataValues(surveyId, {
       expenses,
@@ -178,129 +175,257 @@ export const updateSurvey = async (req, res) => {
       familyResources,
       appliancesOwn,
       amenities
-    }) 
+    });
 
     await updateSurveyData(connection, {
       surveyId,
-      respondent: familyInformation.respondent,
+      familyInformation,
       respondentPhoto,
       respondentSignature,
-
       surveyData,
       farmlots,
-      communityIssues
-    });    
+      communityIssues,
+      waterInformation
+    });
 
-    ///////////////////////////////////////////////
+    // ================================================
+    // STEP 4: MIGRATE OR UPDATE POPULATION DATA
+    // ================================================
 
-
-    // UPDATE POPULATION / RESIDENT
-
-    const updatedFamilyProfile =  await syncPopulation(
-      connection, 
-      familyId, 
+    const updatedFamilyProfile = await syncPopulation(
+      connection,
+      familyId,
       familyProfile,
       newFamilyId
     );
-    
-    await syncSocialClassifications(
-      connection, 
-      updatedFamilyProfile, 
-      CLASSIFICATIONS
-    );  
+
+    await syncSocialClassifications(connection, updatedFamilyProfile, CLASSIFICATIONS);
     await syncProfessionalInformation(connection, updatedFamilyProfile);
     await syncContactInformation(connection, updatedFamilyProfile);
     await syncHealthInformation(connection, updatedFamilyProfile);
     await syncGovernmentId(connection, updatedFamilyProfile);
     await syncAffiliatedMember(connection, updatedFamilyProfile);
     await syncNonIvatanMember(connection, updatedFamilyProfile);
-    
-    
-    ///////////////////////////////////////////////
 
-    // UPDATE FAMILY DATA
+    // ================================================
+    // STEP 5: MIGRATE OR UPDATE FAMILY INFORMATION
+    // ================================================
 
-    const serviceAvailedValues = prepareServiceAvailedValues(
-      newFamilyId, 
-      serviceAvailed
-    );
+    if (shouldMigrateToExistingHousehold) {
+      await migrateFamilyToNewHousehold(connection, {
+        oldFamilyId: familyId,
+        newFamilyId,
+        newHouseholdId,
+        surveyId,
+        familyInformation,
+        serviceAvailed
+      });
+    } else {
+      await updateFamilyInformation(connection, {
+        familyId,
+        familyInformation,
+        serviceAvailed
+      });
+    }
 
-    await updateFamilyData(connection, {
-      surveyId,
-      familyId,
-      newFamilyId,
-      newHouseholdId,
-      familyInformation,
-      serviceAvailed,
-      householdInformation,
-      serviceAvailedValues
-    });
+    // ================================================
+    // STEP 6: HANDLE HOUSEHOLD DATA
+    // ================================================
 
-    ////////////////////////////////////////////////
+    if (shouldMigrateToExistingHousehold) {
+      // Ensure target household exists and is up-to-date
+      await upsertHouseholdData(connection, {
+        householdId: newHouseholdId,
+        householdInformation,
+        houseImages
+      });
 
-    // UPDATE HOUSEHOLD DATA
+      // Clean up old household if no longer in use
+      await cleanupOldHousehold(connection, householdId);
+    } else {
+      // Regular household update
+      const imageValues = houseImages.map((img, index) => [ 
+        householdId, 
+        img.url, 
+        img.publicId, 
+        householdInformation.houseImageTitles[index] 
+      ]);
 
-    await updateHouseholdData(connection, {
-      householdId,
-      newHouseholdId,
-      householdInformation,
-      waterInformation,
-      houseImages
-    });
+      await updateHouseholdData(connection, {
+        householdId,
+        householdInformation,
+        imageValues
+      });
+    }
 
-    // HOUSE IMAGES
+    /////////////////////////////////////////////////////////////
 
-    ////////////////////////////////////////////////
-
-    
-
-    ////////////////////////////////////////////////
-    
     await connection.commit();
 
     return res.status(200).json({ 
       success: true,
       message: 'Survey updated successfully',
-      surveyId: surveyId
+      surveyId,
+      ...(newFamilyId && { 
+        migrated: true,
+        newFamilyId,
+        newHouseholdId 
+      })
     });
+
   } catch (error) {
     await connection.rollback();
 
-    console.log('Database operation failed, cleaning up Cloudinary uploads...');
-        
-    try {
-      const publicIdsToDelete = [];
-
-      // Collect all public_ids that were successfully uploaded
-      if (houseImages?.length > 0) {
-        publicIdsToDelete.push(...houseImages.map(img => img.publicId));
-      }
-      
-      if (respondentPhoto?.publicId) {
-        publicIdsToDelete.push(respondentPhoto.publicId);
-      }
-      
-      if (respondentSignature?.publicId) {
-        publicIdsToDelete.push(respondentSignature.publicId);
-      }
-
-      // Delete all uploaded images from Cloudinary
-      if (publicIdsToDelete.length > 0) {
-        await deleteMultipleFromCloudinary(publicIdsToDelete);
-        console.log(`Cleaned up ${publicIdsToDelete.length} images from Cloudinary`);
-      }
-    } catch (cleanupError) {
-      // Log cleanup error but don't throw - we still want to return the original error
-      console.error('Error cleaning up Cloudinary uploads:', cleanupError);
-    }
+    // CLEANUP UPLOADED IMAGES
+    await cleanupCloudinaryUploads({
+      houseImages,
+      respondentPhoto,
+      respondentSignature
+    });
 
     console.error('Error updating survey:', error);
 
-    res.status(500).json({ 
-      success: false,
-      message: 'Server error'
-    });
+    // 🌐 Network / timeout (frontend usually triggers this, but still useful)
+    if (error.code === 'ECONNRESET' || error.code === 'ETIMEDOUT') {
+      return res.status(503).json(
+        apiError({
+          status: 503,
+          code: 'NETWORK_ERROR',
+          message: error.message,
+          userMessage:
+            'The connection was interrupted. Please check your internet connection and try again.'
+        })
+      );
+    }
+
+    // 🖼 Cloudinary upload/delete errors
+    if (error.name === 'CloudinaryError') {
+      return res.status(500).json(
+        apiError({
+          code: 'IMAGE_UPLOAD_FAILED',
+          message: error.message,
+          userMessage:
+            'Some images could not be uploaded. Please try again.'
+        })
+      );
+    }
+
+    // 🗄 MySQL / Database errors
+    if (error.code?.startsWith('ER_')) {
+      return res.status(500).json(
+        apiError({
+          code: 'DATABASE_ERROR',
+          message: error.message,
+          userMessage:
+            'We could not save your survey due to a server issue. No data was lost. Please try again.'
+        })
+      );
+    }
+
+    // 📦 Invalid JSON / bad payload
+    if (error instanceof SyntaxError) {
+      return res.status(400).json(
+        apiError({
+          status: 400,
+          code: 'INVALID_PAYLOAD',
+          message: error.message,
+          userMessage:
+            'Some survey data is invalid. Please reload the page and try again.'
+        })
+      );
+    }
+
+    // ❌ Fallback
+    return res.status(500).json(
+      apiError({
+        message: error.message,
+        userMessage:
+          'The server encountered an unexpected error. Please try again later.'
+      })
+    );
   } finally {
     connection.release();
   }
 };
+
+// ================================================
+// HELPER FUNCTIONS
+// ================================================
+
+async function findExistingFamilyHead(connection, { firstName, middleName, lastName, suffix }) {
+  console.log('🔍 SEARCHING FOR FAMILY HEAD:', { firstName, middleName, lastName, suffix });
+
+  const [results] = await connection.query(`
+    SELECT p.family_id, f.household_id
+    FROM population p
+    JOIN family_information f ON f.family_id = p.family_id
+    WHERE p.first_name = ?
+      AND (p.middle_name <=> ?)
+      AND p.last_name = ?
+      AND (p.suffix <=> ?)
+      AND p.relation_to_family_head = 'Family Head'
+    LIMIT 1
+  `, [firstName, middleName, lastName, suffix]);
+
+  return results[0] || null;
+}
+
+async function generateNextFamilyId(connection, householdId) {
+  // Get latest family under this household
+  const [latestFamily] = await connection.query(`
+    SELECT family_id
+    FROM family_information
+    WHERE household_id = ?
+    ORDER BY family_id DESC
+    LIMIT 1
+  `, [householdId]);
+
+  // Extract household number from household_id (HID-0126-0001 → 0001)
+  const householdParts = householdId.split('-');
+  const barangayCode = householdParts[1]; // 0126
+  const householdNumber = householdParts[2]; // 0001
+
+  let nextLetter = 'A';
+
+  if (latestFamily[0]?.family_id) {
+    // Extract letter from latest family_id (FID-0126-0001-B → B)
+    const familyParts = latestFamily[0].family_id.split('-');
+    const currentLetter = familyParts[3] || 'A';
+    
+    // Get next letter (A→B, B→C, etc.)
+    nextLetter = String.fromCharCode(currentLetter.charCodeAt(0) + 1);
+  }
+
+  const newFamilyId = `FID-${barangayCode}-${householdNumber}-${nextLetter}`;
+  
+  console.log('📝 GENERATED FAMILY ID:', {
+    householdId,
+    latestFamilyId: latestFamily[0]?.family_id || 'none',
+    newFamilyId
+  });
+
+  return newFamilyId;
+}
+
+async function cleanupCloudinaryUploads({ houseImages, respondentPhoto, respondentSignature }) {
+  try {
+    const publicIdsToDelete = [];
+
+    if (houseImages?.length > 0) {
+      publicIdsToDelete.push(...houseImages.map(img => img.publicId));
+    }
+    if (respondentPhoto?.publicId) {
+      publicIdsToDelete.push(respondentPhoto.publicId);
+    }
+    if (respondentSignature?.publicId) {
+      publicIdsToDelete.push(respondentSignature.publicId);
+    }
+
+    if (publicIdsToDelete.length > 0) {
+      await deleteMultipleFromCloudinary(publicIdsToDelete);
+      console.log(`🧹 Cleaned up ${publicIdsToDelete.length} images from Cloudinary`);
+    }
+  } catch (error) {
+    console.error('Error cleaning up Cloudinary uploads:', error);
+  }
+}

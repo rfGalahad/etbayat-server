@@ -5,6 +5,8 @@ export const CLASSIFICATIONS = {
   soloParent: { code: 'SP', name: 'Solo Parent' },
   IS: { code: 'IS', name: 'In School' },
   OSY: { code: 'OSY', name: 'Out of School Youth' },
+  WY: { code: 'WY', name: 'Working Youth' },
+  NWY: { code: 'NWY', name: 'Non-Working Youth' },
   pantawidBeneficiary: { code: 'PB', name: 'Pantawid Beneficiary' },
   lgbtq: { code: 'LGBTQ', name: 'LGBTQ+' },
   indigenousPerson: { code: 'INDIGENOUS', name: 'Indigenous Person' },

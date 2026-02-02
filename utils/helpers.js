@@ -21,6 +21,7 @@ export const base64ToBuffer = (base64) => {
 }
 
 export const getNextFamilyId = (latestFamilyId, baseId) => {
+  
   if (!latestFamilyId) {
     return `FID-${baseId}-A`;
   }

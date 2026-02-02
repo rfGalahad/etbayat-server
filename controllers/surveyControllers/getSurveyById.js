@@ -25,7 +25,10 @@ export const getSurveyById = async (req, res) => {
 
     const [familyRows] = await connection.query(`
       SELECT 
-        s.respondent,
+        s.respondent_first_name,
+        s.respondent_middle_name,
+        s.respondent_last_name,
+        s.respondent_suffix,
         f.family_id as familyId,
         f.irregular_income AS irregularIncome,
         f.family_class AS familyClass,
@@ -213,18 +216,23 @@ export const getSurveyById = async (req, res) => {
           longitude,
           street as houseStreet,
           barangay,
-          multiple_family as multipleFamily  
+          multiple_family as multipleFamily,
+          family_head_first_name as familyHeadFirstName,
+          family_head_middle_name as familyHeadMiddleName,
+          family_head_last_name as familyHeadLastName,
+          family_head_suffix as familyHeadSuffix
          FROM households
          WHERE household_id = ?`,
          [householdId]
       ),
 
       // HOUSE IMAGES
-      connection.query(
+      connection.query( 
         `SELECT 
           house_image_id as houseImageId,
           house_image_url as houseImagePreviews,
-          house_image_title as houseImageTitles
+          house_image_title as houseImageTitles,
+          house_image_public_id as houseImagePublicId
          FROM house_images
          WHERE household_id = ?`,
          [householdId]
@@ -233,7 +241,7 @@ export const getSurveyById = async (req, res) => {
       // WATER INFORMATION
       connection.query(
         `SELECT
-          water_info_id AS waterInformationId,
+          water_information_id AS waterInformationId,
           CASE 
             WHEN water_access = 1 THEN 'YES'
             WHEN water_access = 0 THEN 'NO'
@@ -246,8 +254,8 @@ export const getSurveyById = async (req, res) => {
           END AS potableWater,
           water_sources AS waterSources
         FROM water_information
-        WHERE household_id = ?`,
-        [householdId]
+        WHERE survey_id = ?`,
+        [surveyId]
       ),
 
       // LIVESTOCK
@@ -389,13 +397,19 @@ export const getSurveyById = async (req, res) => {
       houseImageId: houseImages.map(img => img.houseImageId),
       houseImagePreviews: houseImages.map(img => img.houseImagePreviews),
       houseImageTitles: houseImages.map(img => img.houseImageTitles),
+      houseImagePublicId: houseImages.map(img => img.houseImagePublicId),
       position: [
         householdInformationRow.latitude, 
         householdInformationRow.longitude
       ],
       houseStreet: householdInformationRow.houseStreet,
       barangay: householdInformationRow.barangay,
-      multipleFamily: householdInformationRow.multipleFamily
+      multipleFamily: householdInformationRow.multipleFamily,
+      alreadyMultipleFamily: householdInformationRow.multipleFamily ? true : false,
+      familyHeadFirstName: householdInformationRow.familyHeadFirstName,
+      familyHeadMiddleName: householdInformationRow.familyHeadMiddleName,
+      familyHeadLastName: householdInformationRow.familyHeadLastName,
+      familyHeadSuffix: householdInformationRow.familyHeadSuffix
     };
     
     // WATER SOURCES
@@ -413,6 +427,8 @@ export const getSurveyById = async (req, res) => {
     const classificationMap = {
       'OSY': { field: 'youthCategory', value: 'OSY' },
       'IS': { field: 'youthCategory', value: 'IS' },
+      'WY': { field: 'youthCategory', value: 'WY' },
+      'NWY': { field: 'youthCategory', value: 'NWY' },
       'PWD': { field: 'pwd', value: true },
       'OT': { field: 'outOfTown', value: true },
       'SP': { field: 'soloParent', value: true },

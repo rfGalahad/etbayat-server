@@ -1,3 +1,5 @@
+import { getAllHousehold } from './getAllHousehold.js'
+
 export { getAllStats } from './getAllStats.js'
 export { getAllPopulation } from './getAllPopulation.js'
 export { 
@@ -14,3 +16,5 @@ export { getAllWaterSources } from './getAllWaterSources.js'
 export { getAllWaterAccess } from './getAllWaterAccess.js'
 export { getAllOfw } from './getAllOfw.js'
 export { getAllOutOfTown } from './getAllOutOfTown.js'
+export { getAllFamily } from './getAllFamily.js'
+export { getAllHousehold } from './getAllHousehold.js' 

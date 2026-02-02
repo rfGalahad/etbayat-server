@@ -7,6 +7,9 @@ export const getAllStats = async (req, res) => {
         -- Total Households
         (SELECT COUNT(*) FROM households) AS totalHousehold,
 
+        -- Total Family
+        (SELECT COUNT(*) FROM family_information) AS totalFamily,
+
         -- Total Population
         (SELECT COUNT(*) FROM population) AS totalPopulation,
 
@@ -18,7 +21,7 @@ export const getAllStats = async (req, res) => {
 
         -- Total Youth
         (SELECT COUNT(*) FROM population
-          WHERE TIMESTAMPDIFF(YEAR, birthdate, CURDATE()) BETWEEN 15 AND 23
+          WHERE TIMESTAMPDIFF(YEAR, birthdate, CURDATE()) BETWEEN 15 AND 30
         ) AS totalYouth,
 
         -- Total Senior Citizen
