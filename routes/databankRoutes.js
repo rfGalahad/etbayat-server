@@ -61,6 +61,18 @@ router.get('/men',
   databankController.getMenMasterlist
 );
 
+// GET YOUTH MASTERLIST
+router.get('/youth', 
+  authenticateToken, 
+  databankController.getYouthMasterlist
+);
+
+// GET CHILDREN MASTERLIST
+router.get('/children', 
+  authenticateToken, 
+  databankController.getChildrenMasterlist
+);
+
 // GET SENIOR CITIZEN MASTERLIST
 router.get('/seniorCitizen', 
   authenticateToken, 

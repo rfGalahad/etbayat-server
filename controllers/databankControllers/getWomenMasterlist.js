@@ -12,6 +12,7 @@ export const getWomenMasterlist = async (req, res) => {
               IF(p.suffix IS NOT NULL AND p.suffix <> '', CONCAT(' ', p.suffix), '')
           ) AS name,
           DATE_FORMAT(p.birthdate, '%m-%d-%Y') AS birthdate,
+          TIMESTAMPDIFF(YEAR, p.birthdate, CURDATE()) AS age,
           pi.educational_attainment AS educationalAttainment,
           pi.skills,
           pi.occupation,
