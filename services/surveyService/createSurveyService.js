@@ -18,12 +18,15 @@ export const insertSurveyData = async (connection, data) => {
     `INSERT INTO surveys (
       survey_id,
       user_id,
-      respondent,
+      respondent_first_name,
+      respondent_middle_name,
+      respondent_last_name,
+      respondent_suffix,
       respondent_photo_url,
       respondent_photo_id,
       respondent_signature_url,
       respondent_signature_id
-    ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       data.surveyId,
       data.userId,
