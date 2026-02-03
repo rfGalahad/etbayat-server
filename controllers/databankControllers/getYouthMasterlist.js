@@ -32,12 +32,25 @@ export const getYouthMasterlist = async (req, res) => {
 
           /* REMARKS (combined with /) */
           TRIM(BOTH '/' FROM CONCAT_WS('/',
-              /* Working Youth */
+
+              /* Working Youth (WY) */
               CASE
-                  WHEN pi.occupation IS NOT NULL
-                      AND pi.occupation <> 'None'
-                      AND pi.occupation <> 'Student'
+                  WHEN EXISTS (
+                      SELECT 1 FROM social_classification sc
+                      WHERE sc.resident_id = p.resident_id
+                        AND sc.classification_code = 'WY'
+                  )
                   THEN 'Working Youth'
+              END,
+
+              /* Non-Working Youth (NWY) */
+              CASE
+                  WHEN EXISTS (
+                      SELECT 1 FROM social_classification sc
+                      WHERE sc.resident_id = p.resident_id
+                        AND sc.classification_code = 'NWY'
+                  )
+                  THEN 'Non-Working Youth'
               END,
 
               /* PWD */
@@ -71,6 +84,7 @@ export const getYouthMasterlist = async (req, res) => {
               END
           )) AS remarks,
 
+
           h.barangay
 
       FROM population p
@@ -80,7 +94,6 @@ export const getYouthMasterlist = async (req, res) => {
 
       WHERE TIMESTAMPDIFF(YEAR, p.birthdate, CURDATE()) BETWEEN 15 AND 30
       ORDER BY h.barangay, p.last_name, p.first_name;
-
     `);
     
     res.status(200).json({

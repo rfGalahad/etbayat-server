@@ -32,12 +32,25 @@ export const getChildrenMasterlist = async (req, res) => {
 
           /* REMARKS (combined with /) */
           TRIM(BOTH '/' FROM CONCAT_WS('/',
-              /* Working Youth */
+
+              /* Working Youth (WY) */
               CASE
-                  WHEN pi.occupation IS NOT NULL
-                      AND pi.occupation <> 'None'
-                      AND pi.occupation <> 'Student'
+                  WHEN EXISTS (
+                      SELECT 1 FROM social_classification sc
+                      WHERE sc.resident_id = p.resident_id
+                        AND sc.classification_code = 'WY'
+                  )
                   THEN 'Working Youth'
+              END,
+
+              /* Non-Working Youth (NWY) */
+              CASE
+                  WHEN EXISTS (
+                      SELECT 1 FROM social_classification sc
+                      WHERE sc.resident_id = p.resident_id
+                        AND sc.classification_code = 'NWY'
+                  )
+                  THEN 'Non-Working Youth'
               END,
 
               /* PWD */
@@ -70,6 +83,7 @@ export const getChildrenMasterlist = async (req, res) => {
                   THEN 'In School'
               END
           )) AS remarks,
+
 
           h.barangay
 
