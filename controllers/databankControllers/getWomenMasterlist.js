@@ -4,18 +4,39 @@ export const getWomenMasterlist = async (req, res) => {
   try {
     const [rows] = await pool.query(`
       SELECT 
-          p.resident_id as residentId,
+          p.resident_id AS residentId,
           CONCAT(
               p.last_name, ', ',
               p.first_name,
               IF(p.middle_name IS NOT NULL AND p.middle_name <> '', CONCAT(' ', p.middle_name), ''),
               IF(p.suffix IS NOT NULL AND p.suffix <> '', CONCAT(' ', p.suffix), '')
           ) AS name,
-          DATE_FORMAT(p.birthdate, '%m-%d-%Y') as birthdate,
-          pi.educational_attainment as educationalAttainment,
-          pi.skills as skills,
-          pi.occupation as occupation,
-          h.barangay as barangay
+          DATE_FORMAT(p.birthdate, '%m-%d-%Y') AS birthdate,
+          pi.educational_attainment AS educationalAttainment,
+          pi.skills,
+          pi.occupation,
+          h.barangay AS barangay,
+
+          CASE
+              -- Skilled and Working
+              WHEN pi.skills IS NOT NULL AND pi.skills <> ''
+              AND pi.occupation IS NOT NULL AND pi.occupation <> ''
+                  THEN 'Skilled/Working'
+
+              -- Skilled but NOT working
+              WHEN pi.skills IS NOT NULL AND pi.skills <> ''
+              AND (pi.occupation IS NULL OR pi.occupation = '')
+                  THEN 'Skilled/Non-Working'
+
+              -- NOT skilled but Working
+              WHEN (pi.skills IS NULL OR pi.skills = '')
+              AND pi.occupation IS NOT NULL AND pi.occupation <> ''
+                  THEN 'Unskilled/Working'
+
+              -- NOT skilled and NOT working
+              ELSE 'Unskilled/Non-Working'
+          END AS remarks
+
       FROM population p
       INNER JOIN professional_information pi
           ON p.resident_id = pi.resident_id
