@@ -10,7 +10,7 @@ export const getWomenMasterlist = async (req, res) => {
               p.first_name,
               IF(p.middle_name IS NOT NULL AND p.middle_name <> '', CONCAT(' ', p.middle_name), ''),
               IF(p.suffix IS NOT NULL AND p.suffix <> '', CONCAT(' ', p.suffix), '')
-          ) AS fullName,
+          ) AS name,
           DATE_FORMAT(p.birthdate, '%m-%d-%Y') as birthdate,
           pi.educational_attainment as educationalAttainment,
           pi.skills as skills,
