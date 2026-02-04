@@ -4,36 +4,68 @@ export const getSoloParent = async (req, res) => {
   try {
     const [rows] = await pool.query(`
       SELECT
-        p.resident_id,
-        p.family_id,
-        CONCAT(
-            p.last_name, ', ',
-            p.first_name,
-            IFNULL(CONCAT(' ', p.middle_name), ''),
-            IFNULL(CONCAT(' ', p.suffix), '')
-        ) AS name,
-        p.sex,
-        DATE_FORMAT(p.birthdate, '%m-%d-%Y') AS birthdate,
-        p.civil_status,
-        p.religion,
-        p.relation_to_family_head,
-        p.birthplace,
+          fam.family_id,
 
-        COALESCE(hi.barangay, ci.barangay) AS barangay,
+          /* Parent full name (same for all rows in the family) */
+          CONCAT_WS(' ',
+              parent.first_name,
+              parent.middle_name,
+              parent.last_name,
+              parent.suffix
+          ) AS parent_name,
 
-        sc.classification_code,
-        sc.classification_name,
+          /* Resident (parent or child) name */
+          CONCAT_WS(' ',
+              r.first_name,
+              r.middle_name,
+              r.last_name,
+              r.suffix
+          ) AS resident_name,
 
-        sp.solo_parent_id
+          DATE_FORMAT(r.birthdate, '%m-%d-%Y') AS birthdate,
+          TIMESTAMPDIFF(YEAR, r.birthdate, CURDATE()) AS age,
+          r.sex,
 
-      FROM population p
-      LEFT JOIN family_information f ON f.family_id = p.family_id
-      LEFT JOIN households hi ON f.household_id = hi.household_id
-      LEFT JOIN contact_information ci ON p.resident_id = ci.resident_id
-      JOIN social_classification sc ON p.resident_id = sc.resident_id
-          AND sc.classification_code = 'SP'
-      LEFT JOIN solo_parent_id_applications sp ON p.resident_id = sp.resident_id;
-    `);
+          pi.educational_attainment,
+          pi.occupation,
+
+          sp.solo_parent_id,
+          h.barangay,
+
+          /* So parent appears first */
+          CASE
+              WHEN r.relation_to_family_head = 'Family Head' THEN 0
+              ELSE 1
+          END AS sort_order
+
+      FROM social_classification sc
+      JOIN population r
+          ON sc.resident_id = r.resident_id
+
+      /* Get the FAMILY HEAD (parent) */
+      JOIN population parent
+          ON parent.family_id = r.family_id
+        AND parent.relation_to_family_head = 'Family Head'
+
+      JOIN family_information fam
+          ON fam.family_id = r.family_id
+
+      JOIN households h
+          ON h.household_id = fam.household_id
+
+      LEFT JOIN professional_information pi
+          ON pi.resident_id = r.resident_id
+
+      LEFT JOIN solo_parent_id_applications sp
+          ON sp.resident_id = parent.resident_id
+
+      WHERE sc.classification_code = 'SP'
+
+      ORDER BY
+          fam.family_id,
+          sort_order,
+          r.birthdate;
+`);
     
     res.status(200).json({
       success: true,
