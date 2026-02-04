@@ -12,9 +12,22 @@ export const getSeniorCitizenMasterlist = async (req, res) => {
               IF(p.suffix IS NOT NULL AND p.suffix <> '', CONCAT(' ', p.suffix), '')
           ) AS fullName,
           DATE_FORMAT(p.birthdate, '%m-%d-%Y') AS birthdate,
+          TIMESTAMPDIFF(YEAR, p.birthdate, CURDATE()) AS age,
+          p.sex,
           pi.educational_attainment AS educationalAttainment,
           pi.skills AS skills,
           pi.occupation AS occupation,
+
+          CASE
+              WHEN EXISTS (
+                  SELECT 1
+                  FROM social_classification sc
+                  WHERE sc.resident_id = p.resident_id
+                    AND sc.classification_code = 'PWD'
+              )
+              THEN 'PWD'
+          END AS remarks,
+
           h.barangay AS barangay
       FROM population p
       INNER JOIN professional_information pi

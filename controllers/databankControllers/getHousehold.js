@@ -4,19 +4,15 @@ export const getHousehold = async (req, res) => {
   try {
     const [rows] = await pool.query(`
       SELECT
-          h.household_id,
-          GROUP_CONCAT(
-              CONCAT(
-                  p.last_name, ', ',
-                  p.first_name,
-                  IF(p.middle_name IS NOT NULL AND p.middle_name <> '', CONCAT(' ', p.middle_name), ''),
-                  IF(p.suffix IS NOT NULL AND p.suffix <> '', CONCAT(' ', p.suffix), '')
-              )
-              ORDER BY p.last_name, p.first_name
-              SEPARATOR ' | '
-          ) AS family_head_names,
-          h.house_structure,
-          h.house_condition,
+          h.household_id as householdId,
+          CONCAT(
+              h.family_head_last_name, ', ',
+              h.family_head_first_name,
+              IF(h.family_head_middle_name IS NOT NULL AND h.family_head_middle_name <> '', CONCAT(' ', h.family_head_middle_name), ''),
+              IF(h.family_head_suffix IS NOT NULL AND h.family_head_suffix <> '', CONCAT(' ', h.family_head_suffix), '')
+          ) AS familyHead,
+          h.house_structure as houseStructure,
+          h.house_condition as houseCondition,
           h.street,
           h.barangay
       FROM population p

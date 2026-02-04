@@ -19,20 +19,19 @@ export const getAllSurveys = async (req, res) => {
           u.role,
           h.barangay
       FROM surveys s
-      LEFT JOIN users u
-          ON s.user_id = u.user_id
-      LEFT JOIN family_information f
-          ON f.survey_id = s.survey_id
-      LEFT JOIN households h
-          ON h.household_id = f.household_id
-      ORDER BY updated_at DESC
-      `;
+      LEFT JOIN users u ON s.user_id = u.user_id
+      LEFT JOIN family_information f ON f.survey_id = s.survey_id
+      LEFT JOIN households h ON h.household_id = f.household_id
+    `;
+
     let params = [];
 
     if (role === 'Barangay Official') {
       query += ' WHERE s.user_id = ?';
       params.push(userId);
     }
+
+    query += ' ORDER BY s.updated_at DESC';
 
     const [rows] = await pool.query(query, params);
 
