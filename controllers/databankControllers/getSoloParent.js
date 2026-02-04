@@ -4,7 +4,7 @@ export const getSoloParent = async (req, res) => {
   try {
     const [rows] = await pool.query(`
       SELECT
-          fam.family_id,
+          fam.family_id as familyId,
 
           /* Parent full name (same for all rows in the family) */
           CONCAT_WS(' ',
@@ -12,7 +12,7 @@ export const getSoloParent = async (req, res) => {
               parent.middle_name,
               parent.last_name,
               parent.suffix
-          ) AS parent_name,
+          ) AS parentName,
 
           /* Resident (parent or child) name */
           CONCAT_WS(' ',
@@ -20,16 +20,16 @@ export const getSoloParent = async (req, res) => {
               r.middle_name,
               r.last_name,
               r.suffix
-          ) AS resident_name,
+          ) AS childName,
 
           DATE_FORMAT(r.birthdate, '%m-%d-%Y') AS birthdate,
           TIMESTAMPDIFF(YEAR, r.birthdate, CURDATE()) AS age,
           r.sex,
 
-          pi.educational_attainment,
+          pi.educational_attainment as educationalAttainemt,
           pi.occupation,
 
-          sp.solo_parent_id,
+          sp.solo_parent_id as soloParentId,
           h.barangay,
 
           /* So parent appears first */
