@@ -40,42 +40,47 @@ export const getAllDuplicates = async (req, res) => {
           p1.last_name  AS last_name_1,
           p2.last_name  AS last_name_2,
 
-          DATE_FORMAT(p1.birthdate, '%m-%d-%Y') AS birthdate_1,
-          DATE_FORMAT(p2.birthdate, '%m-%d-%Y') AS birthdate_2,
+          p1.birthdate AS birthdate_1,
+          p2.birthdate AS birthdate_2,
 
           p1.sex
       FROM population p1
       JOIN population p2
-          ON p1.resident_id < p2.resident_id
-        AND p1.sex = p2.sex
-        AND SOUNDEX(p1.first_name) = SOUNDEX(p2.first_name)
-        AND SOUNDEX(p1.last_name)  = SOUNDEX(p2.last_name)
+        ON p1.resident_id < p2.resident_id
+       AND p1.sex = p2.sex
+       AND SOUNDEX(p1.first_name) = SOUNDEX(p2.first_name)
+       AND SOUNDEX(p1.last_name)  = SOUNDEX(p2.last_name)
 
       JOIN family_information fi1
-          ON p1.family_id = fi1.family_id
+        ON p1.family_id = fi1.family_id
       JOIN family_information fi2
-          ON p2.family_id = fi2.family_id;
+        ON p2.family_id = fi2.family_id
+
+      -- Uncomment to only compare within same survey
+      -- AND fi1.survey_id = fi2.survey_id
     `);
 
-    // 2️⃣ Apply Levenshtein distance and compute similarity score
+    // 2️⃣ Apply Levenshtein distance and similarity scoring
     const duplicates = rows
       .map(row => {
         const fnameDistance = levenshtein.get(
           row.first_name_1.toLowerCase(),
           row.first_name_2.toLowerCase()
         );
+
         const lnameDistance = levenshtein.get(
           row.last_name_1.toLowerCase(),
           row.last_name_2.toLowerCase()
         );
+
         const birthdateDiff =
           Math.abs(new Date(row.birthdate_1) - new Date(row.birthdate_2)) /
           (1000 * 60 * 60 * 24);
 
         const similarityScore =
-          (2 - fnameDistance) +
-          (3 - lnameDistance) +
-          (2 - birthdateDiff);
+          Math.max(0, 2 - fnameDistance) +
+          Math.max(0, 3 - lnameDistance) +
+          Math.max(0, 2 - birthdateDiff);
 
         return {
           ...row,
@@ -94,18 +99,18 @@ export const getAllDuplicates = async (req, res) => {
 
     // 3️⃣ Cluster duplicates using Union-Find
     const uf = new UnionFind();
-    duplicates.forEach(d => uf.union(d.resident_id, d.possible_duplicate_id));
+    duplicates.forEach(d =>
+      uf.union(d.resident_id, d.possible_duplicate_id)
+    );
 
     const clustersMap = new Map();
 
-    // Build clusters and include full resident info
     duplicates.forEach(d => {
       const root = uf.find(d.resident_id);
       if (!clustersMap.has(root)) clustersMap.set(root, new Map());
 
       const cluster = clustersMap.get(root);
 
-      // Add resident 1
       if (!cluster.has(d.resident_id)) {
         cluster.set(d.resident_id, {
           survey_id: d.survey_id_1,
@@ -118,7 +123,6 @@ export const getAllDuplicates = async (req, res) => {
         });
       }
 
-      // Add resident 2
       if (!cluster.has(d.possible_duplicate_id)) {
         cluster.set(d.possible_duplicate_id, {
           survey_id: d.survey_id_2,
@@ -132,17 +136,14 @@ export const getAllDuplicates = async (req, res) => {
       }
     });
 
-    // 4️⃣ Format clusters as arrays and sort members by similarity
-    const clusters = Array.from(clustersMap.entries())
-      .map(([_, membersMap], index) => {
-        const members = Array.from(membersMap.values())
-          .sort((a, b) => b.similarityScore - a.similarityScore); // highest first
-        return {
-          cluster_id: `CLUSTER-${index + 1}`,
-          members
-        };
-      })
-      .sort((a, b) => b.members[0].similarityScore - a.members[0].similarityScore); // cluster with highest score first
+    // 4️⃣ Format clusters
+    const clusters = Array.from(clustersMap.values())
+      .map((membersMap, index) => ({
+        cluster_id: `CLUSTER-${index + 1}`,
+        members: Array.from(membersMap.values())
+          .sort((a, b) => b.similarityScore - a.similarityScore)
+      }))
+      .sort((a, b) => b.members[0].similarityScore - a.members[0].similarityScore);
 
     res.status(200).json({
       success: true,
