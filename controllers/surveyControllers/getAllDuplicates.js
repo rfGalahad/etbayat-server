@@ -40,8 +40,8 @@ export const getAllDuplicates = async (req, res) => {
           p1.last_name  AS last_name_1,
           p2.last_name  AS last_name_2,
 
-          p1.birthdate AS birthdate_1,
-          p2.birthdate AS birthdate_2,
+          DATE_FORMAT(p1.birthdate, '%m-%d-%Y') AS birthdate_1,
+          DATE_FORMAT(p2.birthdate, '%m-%d-%Y') AS birthdate_2,
 
           p1.sex
       FROM population p1
