@@ -73,6 +73,12 @@ router.get('/children',
   databankController.getChildrenMasterlist
 );
 
+// GET OSY MASTERLIST
+router.get('/osy', 
+  authenticateToken, 
+  databankController.getOsyMasterlist
+);
+
 // GET SENIOR CITIZEN MASTERLIST
 router.get('/seniorCitizen', 
   authenticateToken, 
