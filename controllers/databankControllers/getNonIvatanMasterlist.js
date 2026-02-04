@@ -10,17 +10,14 @@ export const getNonIvatanMasterlist = async (req, res) => {
               p.first_name,
               IF(p.middle_name IS NOT NULL AND p.middle_name <> '', CONCAT(' ', p.middle_name), ''),
               IF(p.suffix IS NOT NULL AND p.suffix <> '', CONCAT(' ', p.suffix), '')
-          ) AS fullName,
+          ) AS name,
           DATE_FORMAT(p.birthdate, '%m-%d-%Y') AS birthdate,
-          pi.educational_attainment AS educationalAttainment,
-          pi.skills AS skills,
-          pi.occupation AS occupation,
+          TIMESTAMPDIFF(YEAR, p.birthdate, CURDATE()) AS age,
+          p.sex,
           h.barangay AS barangay
       FROM population p
       INNER JOIN social_classification sc
           ON p.resident_id = sc.resident_id
-      INNER JOIN professional_information pi
-          ON p.resident_id = pi.resident_id
       INNER JOIN family_information fi
           ON p.family_id = fi.family_id
       INNER JOIN households h
