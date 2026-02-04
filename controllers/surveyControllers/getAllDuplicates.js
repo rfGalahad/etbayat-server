@@ -35,8 +35,8 @@ export const getAllDuplicates = async (req, res) => {
         p2.first_name AS first_name_2,
         p1.last_name  AS last_name_1,
         p2.last_name  AS last_name_2,
-        p1.birthdate  AS birthdate_1,
-        p2.birthdate  AS birthdate_2,
+        DATE_FORMAT(p1.birthdate, '%m-%d-%Y') AS birthdate_1,
+        DATE_FORMAT(p2.birthdate, '%m-%d-%Y') AS birthdate_2,
         p1.sex
       FROM population p1
       JOIN population p2
@@ -132,7 +132,6 @@ export const getAllDuplicates = async (req, res) => {
       })
       .sort((a, b) => b.members[0].similarityScore - a.members[0].similarityScore); // cluster with highest score first
 
-    console.log(duplicates.length, clusters.length, clusters)
     res.status(200).json({
       success: true,
       data: {

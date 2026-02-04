@@ -14,6 +14,7 @@ export const getAllSurveys = async (req, res) => {
               IF(s.respondent_suffix IS NOT NULL AND s.respondent_suffix <> '', CONCAT(' ', s.respondent_suffix), '')
           ) AS respondent,
           s.created_at,
+          s.updated_at,
           u.name AS interviewer,
           u.role,
           h.barangay
@@ -24,6 +25,7 @@ export const getAllSurveys = async (req, res) => {
           ON f.survey_id = s.survey_id
       LEFT JOIN households h
           ON h.household_id = f.household_id
+      ORDER BY updated_at DESC
       `;
     let params = [];
 
