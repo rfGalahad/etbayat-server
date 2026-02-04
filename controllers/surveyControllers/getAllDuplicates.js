@@ -29,22 +29,32 @@ export const getAllDuplicates = async (req, res) => {
     // 1️⃣ Pre-filter candidate duplicates using SQL
     const [rows] = await pool.query(`
       SELECT
-        p1.resident_id,
-        p2.resident_id AS possible_duplicate_id,
-        p1.first_name AS first_name_1,
-        p2.first_name AS first_name_2,
-        p1.last_name  AS last_name_1,
-        p2.last_name  AS last_name_2,
-        DATE_FORMAT(p1.birthdate, '%m-%d-%Y') AS birthdate_1,
-        DATE_FORMAT(p2.birthdate, '%m-%d-%Y') AS birthdate_2,
-        p1.sex
+          p1.resident_id,
+          p2.resident_id AS possible_duplicate_id,
+
+          fi1.survey_id AS survey_id_1,
+          fi2.survey_id AS survey_id_2,
+
+          p1.first_name AS first_name_1,
+          p2.first_name AS first_name_2,
+          p1.last_name  AS last_name_1,
+          p2.last_name  AS last_name_2,
+
+          DATE_FORMAT(p1.birthdate, '%m-%d-%Y') AS birthdate_1,
+          DATE_FORMAT(p2.birthdate, '%m-%d-%Y') AS birthdate_2,
+
+          p1.sex
       FROM population p1
       JOIN population p2
-        ON p1.resident_id < p2.resident_id
-       AND p1.sex = p2.sex
-       AND SOUNDEX(p1.first_name) = SOUNDEX(p2.first_name)
-       AND SOUNDEX(p1.last_name)  = SOUNDEX(p2.last_name)
-       
+          ON p1.resident_id < p2.resident_id
+        AND p1.sex = p2.sex
+        AND SOUNDEX(p1.first_name) = SOUNDEX(p2.first_name)
+        AND SOUNDEX(p1.last_name)  = SOUNDEX(p2.last_name)
+
+      JOIN family_information fi1
+          ON p1.family_id = fi1.family_id
+      JOIN family_information fi2
+          ON p2.family_id = fi2.family_id;
     `);
 
     // 2️⃣ Apply Levenshtein distance and compute similarity score
@@ -98,6 +108,7 @@ export const getAllDuplicates = async (req, res) => {
       // Add resident 1
       if (!cluster.has(d.resident_id)) {
         cluster.set(d.resident_id, {
+          survey_id: d.survey_id_1,
           resident_id: d.resident_id,
           first_name: d.first_name_1,
           last_name: d.last_name_1,
@@ -110,6 +121,7 @@ export const getAllDuplicates = async (req, res) => {
       // Add resident 2
       if (!cluster.has(d.possible_duplicate_id)) {
         cluster.set(d.possible_duplicate_id, {
+          survey_id: d.survey_id_2,
           resident_id: d.possible_duplicate_id,
           first_name: d.first_name_2,
           last_name: d.last_name_2,
