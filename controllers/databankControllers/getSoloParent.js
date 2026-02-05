@@ -15,18 +15,23 @@ export const getSoloParent = async (req, res) => {
           ) AS parentName,
 
           /* Resident (parent or child) name */
-          CONCAT_WS(' ',
-              r.first_name,
-              r.middle_name,
-              r.last_name,
-              r.suffix
-          ) AS childName,
+          CASE
+              WHEN r.relation_to_family_head <> 'Family Head'
+              AND TIMESTAMPDIFF(YEAR, r.birthdate, CURDATE()) <= 22
+              THEN CONCAT_WS(' ',
+                  r.first_name,
+                  r.middle_name,
+                  r.last_name,
+                  r.suffix
+              )
+              ELSE NULL
+          END AS childName,
 
           DATE_FORMAT(r.birthdate, '%m-%d-%Y') AS birthdate,
           TIMESTAMPDIFF(YEAR, r.birthdate, CURDATE()) AS age,
           r.sex,
 
-          pi.educational_attainment as educationalAttainemt,
+          pi.educational_attainment as educationalAttainment,
           pi.occupation,
 
           sp.solo_parent_id as soloParentId,
@@ -65,7 +70,7 @@ export const getSoloParent = async (req, res) => {
           fam.family_id,
           sort_order,
           r.birthdate;
-`);
+    `);
     
     res.status(200).json({
       success: true,
