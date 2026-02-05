@@ -11,7 +11,7 @@ export const getAllStats = async (req, res) => {
         (SELECT COUNT(*) FROM family_information) AS totalFamily,
 
         -- Total Population
-        (SELECT COUNT(*) FROM population) AS totalPopulation,
+        (SELECT COUNT(*) FROM population WHERE resident_id LIKE 'RID%') AS totalPopulation,
 
         -- Total Male
         (SELECT COUNT(*) FROM population WHERE sex = 'Male') AS totalMale,

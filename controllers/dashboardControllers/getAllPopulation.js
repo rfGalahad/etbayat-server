@@ -11,7 +11,6 @@ export const getAllPopulation = async (req, res) => {
           ON p.family_id = f.family_id
       JOIN households h 
           ON f.household_id = h.household_id
-      WHERE p.resident_id LIKE 'RID%'
       GROUP BY h.barangay
       ORDER BY h.barangay;
     `);
