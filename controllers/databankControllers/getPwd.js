@@ -26,7 +26,7 @@ export const getPwd = async (req, res) => {
 
           hi.disability_type,
           sp.pwd_id AS pwdId,
-          COALESCE(hi.barangay, ci.barangay) AS barangay
+          COALESCE(h.barangay, ci.barangay) AS barangay
 
       FROM population p
       LEFT JOIN professional_information pi 
@@ -44,6 +44,7 @@ export const getPwd = async (req, res) => {
         AND sc.classification_code = 'PWD'
       LEFT JOIN pwd_id_applications sp 
           ON p.resident_id = sp.resident_id;
+
     `);
     
     res.status(200).json({
