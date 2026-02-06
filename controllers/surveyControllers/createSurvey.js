@@ -244,35 +244,64 @@ export const createSurvey = async (req, res) => {
   } catch (error) {
     await connection.rollback();
 
-    console.log('Database operation failed, cleaning up Cloudinary uploads...');
+    // CLEANUP UPLOADED IMAGES
+    await cleanupCloudinaryUploads({
+      houseImages,
+      respondentPhoto,
+      respondentSignature
+    });
     
-    try {
-      const publicIdsToDelete = [];
+    console.error('Error creating post:', error);
 
-      // Collect all public_ids that were successfully uploaded
-      if (houseImages?.length > 0) {
-        publicIdsToDelete.push(...houseImages.map(img => img.publicId));
-      }
-      
-      if (respondentPhoto?.publicId) {
-        publicIdsToDelete.push(respondentPhoto.publicId);
-      }
-      
-      if (respondentSignature?.publicId) {
-        publicIdsToDelete.push(respondentSignature.publicId);
-      }
-
-      // Delete all uploaded images from Cloudinary
-      if (publicIdsToDelete.length > 0) {
-        await deleteMultipleFromCloudinary(publicIdsToDelete);
-        console.log(`Cleaned up ${publicIdsToDelete.length} images from Cloudinary`);
-      }
-    } catch (cleanupError) {
-      // Log cleanup error but don't throw - we still want to return the original error
-      console.error('Error cleaning up Cloudinary uploads:', cleanupError);
+    // 🌐 Network / timeout (frontend usually triggers this, but still useful)
+    if (error.code === 'ECONNRESET' || error.code === 'ETIMEDOUT') {
+      return res.status(503).json(
+        apiError({
+          status: 503,
+          code: 'NETWORK_ERROR',
+          message: error.message,
+          userMessage:
+            'The connection was interrupted. Please check your internet connection and try again.'
+        })
+      );
     }
 
-    console.error('Error creating post:', error);
+    // 🖼 Cloudinary upload/delete errors
+    if (error.name === 'CloudinaryError') {
+      return res.status(500).json(
+        apiError({
+          code: 'IMAGE_UPLOAD_FAILED',
+          message: error.message,
+          userMessage:
+            'Some images could not be uploaded. Please try again.'
+        })
+      );
+    }
+
+    // 🗄 MySQL / Database errors
+    if (error.code?.startsWith('ER_')) {
+      return res.status(500).json(
+        apiError({   
+          code: 'DATABASE_ERROR',
+          message: error.message,
+          userMessage:
+            'We could not save your survey due to a server issue. No data was lost. Please try again.'
+        })
+      );
+    }
+
+    // 📦 Invalid JSON / bad payload
+    if (error instanceof SyntaxError) {
+      return res.status(400).json(
+        apiError({
+          status: 400,
+          code: 'INVALID_PAYLOAD',
+          message: error.message,
+          userMessage:
+            'Some survey data is invalid. Please reload the page and try again.'
+        })
+      );
+    }
 
     if (error.code === 'ER_DUP_ENTRY') {
       return res.status(409).json({ 
@@ -281,11 +310,41 @@ export const createSurvey = async (req, res) => {
       });
     }
 
-    res.status(500).json({ 
-      success: false,
-      message: 'Server error' 
-    });
+    return res.status(500).json(
+      apiError({
+        message: error.message,
+        userMessage:
+          'The server encountered an unexpected error. Please try again later.'
+      })
+    );
   } finally {
     connection.release();
   }
 };
+
+// ================================================
+// HELPER FUNCTIONS
+// ================================================
+
+async function cleanupCloudinaryUploads({ houseImages, respondentPhoto, respondentSignature }) {
+  try {
+    const publicIdsToDelete = [];
+
+    if (houseImages?.length > 0) {
+      publicIdsToDelete.push(...houseImages.map(img => img.publicId));
+    }
+    if (respondentPhoto?.publicId) {
+      publicIdsToDelete.push(respondentPhoto.publicId);
+    }
+    if (respondentSignature?.publicId) {
+      publicIdsToDelete.push(respondentSignature.publicId);
+    }
+
+    if (publicIdsToDelete.length > 0) {
+      await deleteMultipleFromCloudinary(publicIdsToDelete);
+      console.log(`🧹 Cleaned up ${publicIdsToDelete.length} images from Cloudinary`);
+    }
+  } catch (error) {
+    console.error('Error cleaning up Cloudinary uploads:', error);
+  }
+}

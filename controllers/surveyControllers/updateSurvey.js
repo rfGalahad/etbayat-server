@@ -313,7 +313,7 @@ export const updateSurvey = async (req, res) => {
     // 🗄 MySQL / Database errors
     if (error.code?.startsWith('ER_')) {
       return res.status(500).json(
-        apiError({
+        apiError({   
           code: 'DATABASE_ERROR',
           message: error.message,
           userMessage:
