@@ -7,36 +7,38 @@ export const getHousehold = async (req, res) => {
           h.household_id AS householdId,
 
           CASE
-              WHEN h.multiple_family = FALSE THEN
-                  CONCAT(
-                      MAX(CASE WHEN p.relation_to_family_head = 'Family Head' THEN p.last_name END), ', ',
-                      MAX(CASE WHEN p.relation_to_family_head = 'Family Head' THEN p.first_name END),
-                      IF(
-                          MAX(CASE WHEN p.relation_to_family_head = 'Family Head' THEN p.middle_name END) IS NOT NULL
-                          AND MAX(CASE WHEN p.relation_to_family_head = 'Family Head' THEN p.middle_name END) <> '',
-                          CONCAT(' ', MAX(CASE WHEN p.relation_to_family_head = 'Family Head' THEN p.middle_name END)),
-                          ''
-                      ),
-                      IF(
-                          MAX(CASE WHEN p.relation_to_family_head = 'Family Head' THEN p.suffix END) IS NOT NULL
-                          AND MAX(CASE WHEN p.relation_to_family_head = 'Family Head' THEN p.suffix END) <> '',
-                          CONCAT(' ', MAX(CASE WHEN p.relation_to_family_head = 'Family Head' THEN p.suffix END)),
-                          ''
-                      )
+            WHEN h.multiple_family = FALSE THEN
+              CONCAT(
+                  MAX(CASE WHEN p.relation_to_family_head = 'Family Head' THEN p.last_name END), ', ',
+                  MAX(CASE WHEN p.relation_to_family_head = 'Family Head' THEN p.first_name END),
+                  IF(
+                      MAX(CASE WHEN p.relation_to_family_head = 'Family Head' THEN p.middle_name END) IS NOT NULL
+                      AND MAX(CASE WHEN p.relation_to_family_head = 'Family Head' THEN p.middle_name END) <> '',
+                      CONCAT(' ', MAX(CASE WHEN p.relation_to_family_head = 'Family Head' THEN p.middle_name END)),
+                      ''
+                  ),
+                  IF(
+                      MAX(CASE WHEN p.relation_to_family_head = 'Family Head' THEN p.suffix END) IS NOT NULL
+                      AND MAX(CASE WHEN p.relation_to_family_head = 'Family Head' THEN p.suffix END) <> '',
+                      CONCAT(' ', MAX(CASE WHEN p.relation_to_family_head = 'Family Head' THEN p.suffix END)),
+                      ''
                   )
-              ELSE
-                  CONCAT(
-                      h.family_head_last_name, ', ',
-                      h.family_head_first_name,
-                      IF(h.family_head_middle_name IS NOT NULL AND h.family_head_middle_name <> '',
-                        CONCAT(' ', h.family_head_middle_name), ''),
-                      IF(h.family_head_suffix IS NOT NULL AND h.family_head_suffix <> '',
-                        CONCAT(' ', h.family_head_suffix), '')
-                  )
+              )
+            ELSE
+              CONCAT(
+                  h.family_head_last_name, ', ',
+                  h.family_head_first_name,
+                  IF(h.family_head_middle_name IS NOT NULL AND h.family_head_middle_name <> '',
+                    CONCAT(' ', h.family_head_middle_name), ''),
+                  IF(h.family_head_suffix IS NOT NULL AND h.family_head_suffix <> '',
+                    CONCAT(' ', h.family_head_suffix), '')
+              )
           END AS familyHead,
 
           h.house_structure AS houseStructure,
           h.house_condition AS houseCondition,
+          h.latitude,
+          h.longitude,
           h.street,
           h.barangay
 
@@ -55,6 +57,8 @@ export const getHousehold = async (req, res) => {
           h.family_head_suffix,
           h.house_structure,
           h.house_condition,
+          h.latitude,
+          h.longitude,
           h.street,
           h.barangay
 

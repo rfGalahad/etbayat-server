@@ -4,7 +4,7 @@ export const getPopulation = async (req, res) => {
   try {
     const [rows] = await pool.query(`
       SELECT 
-        p.resident_id,
+        p.resident_id AS residentId,
         CONCAT(
           p.last_name, ', ',
           p.first_name,

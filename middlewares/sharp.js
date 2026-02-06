@@ -8,19 +8,25 @@ export const resizeImages = async (req, res, next) => {
 
   try {
    
-    const processImage = async (file, options, prefix) => {
-      const buffer = await sharp(file.buffer)
-        .rotate()
+    const processImage = async (file, options) => {
+      // 🛑 hard guard
+      if (!file?.buffer || file.buffer.length < 100) {
+        throw new Error('Invalid or empty image buffer');
+      }
+
+      const buffer = await sharp(file.buffer, { failOn: 'none' })
+        .rotate() // auto orientation + re-decode
         .resize(options.resize)
         .jpeg({ quality: options.quality })
-        .toBuffer(); // ❌ no file written to disk
+        .toBuffer();
 
       return {
         ...file,
-        buffer,              // updated resized image buffer
-        size: buffer.length, // optional
+        buffer,
+        size: buffer.length,
       };
     };
+
 
 
     /* ---------- SINGLE FILE (upload.single) ---------- */

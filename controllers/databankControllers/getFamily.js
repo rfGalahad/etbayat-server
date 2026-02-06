@@ -38,6 +38,8 @@ export const getFamily = async (req, res) => {
             /* 9. Multiple family */
             h.multiple_family as multipleFamily,
 
+            fi.family_class AS familyClass,
+
             h.barangay
 
         FROM family_information fi
