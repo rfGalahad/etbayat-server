@@ -275,6 +275,20 @@ export const insertApplicantInformationData = async (connection, data) => {
     ]
   );
 
+  // PWD CLASSIFICATION
+  await connection.query(`
+    INSERT INTO social_classification ( 
+      resident_id,
+      classification_code,
+      classification_name
+    ) VALUES (?, ?, ?)`, 
+    [
+      data.tempResidentId,
+      'PWD',
+      'Person with Disability'
+    ]
+  );
+
   // PROFESSIONAL INFORMATION
   await connection.query(`
     INSERT INTO professional_information ( 

@@ -15,3 +15,5 @@ export { getOutOfTownMasterlist } from './getOutOfTownMasterlist.js'
 export { getYouthMasterlist } from './getYouthMasterlist.js'
 export { getChildrenMasterlist } from './getChildrenMasterlist.js'
 export { getOsyMasterlist } from './getOsyMasterlist.js'
+
+export { updateFamilyClass } from './updateFamilyClass.js'

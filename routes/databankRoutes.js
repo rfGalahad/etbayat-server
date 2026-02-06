@@ -1,7 +1,7 @@
 import express from 'express';
 import * as databankController from '../controllers/databankControllers/index.js';
 import { authenticateToken } from '../middlewares/auth.js';
-
+import { activityLogger } from '../middlewares/activityLogger.js';
 
 const router = express.Router();
 
@@ -108,6 +108,15 @@ router.get('/resident/:residentId',
   authenticateToken,
   databankController.getResidentInfoById
 );
+
+router.put('/family/:familyId', 
+  authenticateToken, 
+  activityLogger((req, resData) => 
+    `Updated Family Class #${resData.familyId} to ${resData.familyClass}`
+  ),
+  databankController.updateFamilyClass
+);
+
 
 
 

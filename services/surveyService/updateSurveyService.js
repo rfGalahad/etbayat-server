@@ -52,13 +52,14 @@ export const updateSurveyData = async (connection, data) => {
         respondent_suffix = ?
     WHERE survey_id = ?`,
     [
-      data.familyInformation.respondentFirstName.trim(),
-      data.familyInformation.respondentMiddleName.trim(),
-      data.familyInformation.respondentLastName.trim(),
-      data.familyInformation.respondentSuffix.trim(),
+      (data.familyInformation.respondentFirstName || "").trim(),
+      (data.familyInformation.respondentMiddleName || "").trim(),
+      (data.familyInformation.respondentLastName || "").trim(),
+      (data.familyInformation.respondentSuffix || "").trim(),
       data.surveyId
     ]
   );
+
 
   // UPDATE ACKNOWLEDGEMENT
   if (data.respondentPhoto || data.respondentSignature) {
