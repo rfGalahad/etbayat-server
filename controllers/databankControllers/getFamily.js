@@ -4,12 +4,12 @@ export const getFamily = async (req, res) => {
   try {
     const [rows] = await pool.query(`
       SELECT
-            fi.family_id,
+            fi.family_id as familyId,
 
             /* 2. Family head full name */
-            fh.last_name   AS last_name,
-            fh.first_name  AS first_name,
-            fh.middle_name AS middle_name,
+            fh.last_name   AS lastName,
+            fh.first_name  AS firstName,
+            fh.middle_name AS middleName,
             fh.suffix      AS suffix,
 
             /* 3. Total residents */
