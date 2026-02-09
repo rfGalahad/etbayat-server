@@ -30,6 +30,12 @@ router.post(
   seniorIdApplicationController.createSeniorIdApplication
 );
 
+// GET RESIDENT INFORMATION
+router.get('resident/:residentId',
+  authenticateToken,
+  seniorIdApplicationController.getResidentInfo
+);
+
 // GET APPLCATION BY ID
 router.get('/:seniorCitizenId',
   authenticateToken,
