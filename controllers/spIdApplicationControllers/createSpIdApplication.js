@@ -1,5 +1,5 @@
 import pool from '../../config/db.js';
-import { generateId } from './generateId.js';
+import { generateSoloParentId, generateTemporaryResidentId } from './generateId.js';
 import { 
   deleteMultipleFromCloudinary,
   uploadToCloudinary 
@@ -35,8 +35,10 @@ export const createSpIdApplication = async (req, res) => {
       soloParentMedia
     } = formData
 
-    const tempId = await generateId(connection);
-    const soloParentId = `SP-${tempId}`;
+    const soloParentTempId = await generateSoloParentId(connection);
+    const soloParentId = `SP-${soloParentTempId}`;
+
+    const tempId = await generateTemporaryResidentId(connection);
     const tempResidentId = `T-RID-${tempId}`;
 
     // UPLOAD IMAGES TO CLOUDINARY    

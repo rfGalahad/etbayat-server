@@ -30,6 +30,12 @@ router.post(
   pwdIdApplicationController.createPwdIdApplication
 );
 
+// GET RESIDENT INFORMATION
+router.get('/resident/:residentId',
+  authenticateToken,
+  pwdIdApplicationController.getResidentInfo
+);
+
 // GET PWD ID APPLICATION BY ID
 router.get('/:pwdId',
   authenticateToken,

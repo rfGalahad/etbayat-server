@@ -1,5 +1,8 @@
 import pool from '../../config/db.js';
-import { generateId } from './generateId.js';
+import { 
+  generatePwdId, 
+  generateTemporaryResidentId 
+} from './generateId.js';
 import { 
   deleteMultipleFromCloudinary,
   uploadToCloudinary 
@@ -38,8 +41,10 @@ export const createPwdIdApplication = async (req, res) => {
       pwdMedia
     } = formData
 
-    const tempId = await generateId(connection);
-    const pwdId = `PWD-${tempId}`;
+    const pwdTempId = await generatePwdId(connection);
+    const pwdId = `PWD-${pwdTempId}`;
+    
+    const tempId = await generateTemporaryResidentId(connection);
     const tempResidentId = `T-RID-${tempId}`;
 
     // UPLOAD IMAGES TO CLOUDINARY    

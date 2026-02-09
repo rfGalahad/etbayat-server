@@ -1,5 +1,8 @@
 import pool from '../../config/db.js';
-import { generateId } from './generateId.js';
+import { 
+  generateSeniorId, 
+  generateTemporaryResidentId 
+} from './generateId.js';
 import { 
   deleteMultipleFromCloudinary,
   uploadToCloudinary 
@@ -34,9 +37,12 @@ export const createSeniorIdApplication = async (req, res) => {
       seniorCitizenMedia
     } = formData
 
-    const tempId = await generateId(connection);
-    const seniorCitizenId = `SC-${tempId}`;
+    const scTempId = await generateSeniorId(connection);
+    const seniorCitizenId = `SC-${scTempId}`;
+
+    const tempId = await generateTemporaryResidentId(connection);
     const tempResidentId = `T-RID-${tempId}`;
+
 
     // UPLOAD IMAGES TO CLOUDINARY    
     if (req.files?.seniorCitizenPhotoId?.[0]) {

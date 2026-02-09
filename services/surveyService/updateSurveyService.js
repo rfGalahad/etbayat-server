@@ -1,4 +1,4 @@
-import { formatDateForMySQL, parseIncome } from "../../utils/helpers.js";
+import { formatDateForMySQL, formatMonthYearForMySQL, parseIncome } from "../../utils/helpers.js";
 import { prepareServiceAvailedValues } from "../../utils/surveyDataTransformers.js";
 
 // UPDATE SURVEY DATA
@@ -414,9 +414,9 @@ const syncServiceAvailed = async (
       WHERE service_availed_id = ?
         AND family_id = ?
     `, [
-      formatDateForMySQL(service.dateServiceAvailed),
+      formatMonthYearForMySQL(service.dateServiceAvailed),
       service.ngoName,
-      service.serviceAvailed,
+      service.serviceAvailed, 
       service.maleServed,
       service.femaleServed,
       service.howServiceHelp,
@@ -430,7 +430,7 @@ const syncServiceAvailed = async (
   if (newRecords.length > 0) {
     const insertValues = newRecords.map(s => [
       familyId,
-      formatDateForMySQL(s.dateServiceAvailed),
+      formatMonthYearForMySQL(s.dateServiceAvailed),
       s.ngoName,
       s.serviceAvailed,
       s.maleServed,

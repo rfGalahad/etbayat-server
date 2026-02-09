@@ -352,7 +352,7 @@ export const getSurveyById = async (req, res) => {
       connection.query(
         `SELECT 
           service_availed_id as serviceAvailedId,
-          DATE_FORMAT(date_service_availed, '%m-%d-%Y') AS dateServiceAvailed,
+          DATE_FORMAT(date_service_availed, '%m-%Y') AS dateServiceAvailed,
           ngo_name as ngoName,
           service_availed as serviceAvailed,
           male_served as maleServed,

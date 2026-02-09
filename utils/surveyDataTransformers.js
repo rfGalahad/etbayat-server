@@ -1,5 +1,5 @@
 import { CLASSIFICATIONS } from "../constants/surveyConstants.js";
-import { formatDateForMySQL, parseIncome } from "./helpers.js";
+import { formatDateForMySQL, formatMonthYearForMySQL, parseIncome } from "./helpers.js";
 
 // SURVEY DATA
 
@@ -153,7 +153,7 @@ export const prepareSurveyDataValues = (surveyId, data) => {
 export const prepareServiceAvailedValues = (familyId, serviceAvailed) => {
   return serviceAvailed.map((service, index) => [ 
     familyId, 
-    formatDateForMySQL(service.dateServiceAvailed),
+    formatMonthYearForMySQL(service.dateServiceAvailed),
     service.ngoName,
     service.serviceAvailed,
     Number(service.maleServed) || 0,

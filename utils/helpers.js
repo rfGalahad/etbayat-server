@@ -10,6 +10,13 @@ export const formatDateForMySQL = (dateStr) => {
   return `${year}-${month}-${day}`;
 };
 
+export const formatMonthYearForMySQL = (monthYearStr) => {
+  if (!monthYearStr) return null;
+  const [month, year] = monthYearStr.split('-');
+  return `${year}-${month}-01`;
+};
+
+
 export const base64ToBuffer = (base64) => {
   const matches = base64.match(/^data:(.+);base64,(.+)$/);
 
