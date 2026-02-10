@@ -226,13 +226,14 @@ export const insertHouseholdData = async (connection, data) => {
       longitude,
       street,
       barangay,
+      sitio_yawran,
       municipality,
       multiple_family,
       family_head_first_name,
       family_head_middle_name,
       family_head_last_name,
       family_head_suffix
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `, [
     data.householdId,
     data.householdInformation?.houseStructure ?? null,
@@ -241,6 +242,7 @@ export const insertHouseholdData = async (connection, data) => {
     data.householdInformation?.position?.[1] ?? null,
     data.householdInformation?.houseStreet.trim() ?? null,
     data.householdInformation?.barangay ?? null,
+    data.householdInformation?.sitioYawran ?? null,
     data.householdInformation?.municipality ?? null,
     data.householdInformation?.multipleFamily ?? null,
     data.householdInformation?.familyHeadFirstName.trim() ?? null,

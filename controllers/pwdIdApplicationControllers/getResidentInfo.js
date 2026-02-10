@@ -50,16 +50,21 @@ export const getResidentInfo = async (req, res) => {
         [residentId]
       ),
 
-      // CONTACT INFORMATION
-      connection.query(
-        `SELECT
-          street as houseStreet,
-          barangay,
-          telephone_number as landlineNumber,
-          contact_number as contactNumber,
-          email_address as emailAddress
-        FROM contact_information
-        WHERE resident_id = ?`,
+      connection.query(`
+        SELECT
+            h.street AS houseStreet,
+            h.barangay,
+            c.telephone_number as landlineNumber, 
+            c.contact_number as contactNumber, 
+            c.email_address as emailAddress
+        FROM population p
+        LEFT JOIN contact_information c
+            ON c.resident_id = p.resident_id
+        LEFT JOIN family_information fi
+            ON p.family_id = fi.family_id
+        LEFT JOIN households h
+            ON fi.household_id = h.household_id
+        WHERE p.resident_id = ?;`,
         [residentId]
       ),
 

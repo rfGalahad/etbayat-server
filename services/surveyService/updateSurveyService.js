@@ -40,8 +40,6 @@ const bulkUpsert = async (
 export const updateSurveyData = async (connection, data) => {
 
   const surveyData = data.surveyData;
-
-  console.log('FAMILY', data.familyInformation)
   
   // UPDATE SURVEY
   await connection.query(`
@@ -262,6 +260,7 @@ export const updateHouseholdData = async (connection, data) => {
         longitude = ?,
         street = ?,
         barangay = ?,
+        sitio_yawran = ?,
         municipality = ?,
         multiple_family = ?
     WHERE household_id = ?
@@ -272,6 +271,7 @@ export const updateHouseholdData = async (connection, data) => {
     householdInformation?.position?.[1] ?? null,
     householdInformation?.houseStreet?.trim() ?? null,
     householdInformation?.barangay ?? null,
+    householdInformation?.sitioYawran ?? null,
     householdInformation?.municipality ?? null,
     householdInformation?.multipleFamily ?? null,
     householdId
@@ -310,9 +310,10 @@ export const upsertHouseholdData = async (connection, data) => {
       longitude,
       street,
       barangay,
+      sitio_yawran,
       municipality,
       multiple_family
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ON DUPLICATE KEY UPDATE
       house_structure = VALUES(house_structure),
       house_condition = VALUES(house_condition),
@@ -330,6 +331,7 @@ export const upsertHouseholdData = async (connection, data) => {
     householdInformation?.position?.[1] ?? null,
     householdInformation?.houseStreet?.trim() ?? null,
     householdInformation?.barangay ?? null,
+    householdInformation?.sitioYawran ?? null,
     householdInformation?.municipality ?? null,
     householdInformation?.multipleFamily ?? null
   ]);
@@ -366,11 +368,7 @@ export const cleanupOldHousehold = async (connection, householdId) => {
       DELETE FROM households
       WHERE household_id = ?
     `, [householdId]);
-    
-    console.log('🗑️ OLD HOUSEHOLD DELETED:', householdId);
-  } else {
-    console.log('⛔ OLD HOUSEHOLD STILL IN USE');
-  }
+  } 
 }
 
 
@@ -538,8 +536,6 @@ export const migrateFamilyToNewHousehold = async (connection, data) => {
     DELETE FROM family_information
     WHERE family_id = ?
   `, [oldFamilyId]);
-
-  console.log('✅ FAMILY MIGRATED:', { from: oldFamilyId, to: newFamilyId });
 }
 
 
@@ -564,12 +560,6 @@ export const syncPopulation = async (
     const familyLetter = familyParts[3]; // A
     const residentBaseId = `RID-${barangayCode}-${householdNumber}-${familyLetter}`;
 
-    console.log('👥 SYNC POPULATION:', {
-      oldFamilyId: familyId,
-      newFamilyId: targetFamilyId,
-      residentBaseId
-    });
-
     /** 1️⃣ Collect resident IDs sent by client */
     const existingResidentIds = familyProfile
       .filter(r => r.residentId)
@@ -577,8 +567,6 @@ export const syncPopulation = async (
 
     /** 🔹 IF newFamilyId exists, migrate residents to new family with new IDs */
     if (newFamilyId && newFamilyId !== familyId && existingResidentIds.length > 0) {
-      console.log('🔄 MIGRATING RESIDENTS TO NEW FAMILY');
-
       // Temporarily disable foreign key checks for ID updates
       await connection.query('SET FOREIGN_KEY_CHECKS = 0');
 
@@ -594,8 +582,6 @@ export const syncPopulation = async (
         // Generate new resident ID with correct format
         // RID-0126-0001-B-1 (includes household number and family letter)
         const newResidentId = `${residentBaseId}-${sequence}`;
-
-        console.log(`  🔄 Migrating: ${oldResidentId} → ${newResidentId}`);
 
         // Update all related tables in dependency order
         await connection.query(
@@ -660,8 +646,6 @@ export const syncPopulation = async (
         }
         return r;
       });
-
-      console.log('✅ RESIDENT MIGRATION COMPLETE');
     }
 
     /** 2️⃣ DELETE removed residents */
@@ -697,7 +681,6 @@ export const syncPopulation = async (
 
       if (!residentId) {
         residentId = `${residentBaseId}-${nextNum}`;
-        console.log(`  ✨ New resident: ${residentId}`);
         nextNum++;
       }
 
@@ -717,6 +700,8 @@ export const syncPopulation = async (
       r.suffix || null,
       r.sex,
       formatDateForMySQL(r.birthdate),
+      r.verifiedBirthdate,
+      r.specifyId,
       r.civilStatus,
       r.religion,
       r.relationToFamilyHead,
@@ -734,6 +719,8 @@ export const syncPopulation = async (
         suffix,
         sex,
         birthdate,
+        verified_birthdate,
+        specify_id,
         civil_status,
         religion,
         relation_to_family_head,
@@ -747,6 +734,8 @@ export const syncPopulation = async (
         suffix = VALUES(suffix),
         sex = VALUES(sex),
         birthdate = VALUES(birthdate),
+        verified_birthdate = VALUES(verified_birthdate),
+        specify_id = VALUES(specify_id),
         civil_status = VALUES(civil_status),
         religion = VALUES(religion),
         relation_to_family_head = VALUES(relation_to_family_head),
@@ -754,8 +743,6 @@ export const syncPopulation = async (
       `,
       [values]
     );
-
-    console.log(`✅ SYNCED ${updatedFamilyProfile.length} RESIDENTS`);
     return updatedFamilyProfile;
 
   } catch (err) {

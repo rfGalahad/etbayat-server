@@ -13,6 +13,12 @@ export const getPopulation = async (req, res) => {
         ) AS name,
         p.sex,
         DATE_FORMAT(p.birthdate, '%m-%d-%Y') AS birthdate,
+        CASE
+          WHEN p.verified_birthdate = 1 
+          THEN TRUE
+          ELSE FALSE
+        END AS verifiedBirthdate,
+        p.specify_id as specifyId,
         hi.barangay
       FROM population p
       JOIN family_information fi ON p.family_id = fi.family_id
@@ -21,6 +27,7 @@ export const getPopulation = async (req, res) => {
       ORDER BY name ASC;
     `);
     
+    console.log('ROWS', rows)
     res.status(200).json({
       success: true,
       data: rows

@@ -4,10 +4,10 @@ import {
   generateTemporaryResidentId 
 } from './generateId.js';
 import { 
-  deleteMultipleFromCloudinary,
-  uploadToCloudinary 
-} from '../../utils/cloudinaryUpload.js';
-import { base64ToBuffer } from '../../utils/helpers.js';
+  base64ToBuffer, 
+  saveToLocal,
+  cleanupLocalStorageUploads
+} from '../../utils/helpers.js';
 import { 
   insertApplicantInformationData, 
   insertPwdIdApplicationData, 
@@ -41,32 +41,31 @@ export const createPwdIdApplication = async (req, res) => {
       pwdMedia
     } = formData
 
-    const pwdTempId = await generatePwdId(connection);
-    const pwdId = `PWD-${pwdTempId}`;
+    const pwdId = personalInformation.pwdId;
     
     const tempId = await generateTemporaryResidentId(connection);
     const tempResidentId = `T-RID-${tempId}`;
 
-    // UPLOAD IMAGES TO CLOUDINARY    
+    // UPLOAD IMAGES TO LOCAL STORAGE    
     if (req.files?.pwdPhotoId?.[0]) {
-      console.log('Uploading photo id to Cloudinary...');
-      pwdPhotoId = await uploadToCloudinary(
+      console.log('Saving photo id to local storage...');
+      pwdPhotoId = await saveToLocal(
         req.files.pwdPhotoId[0].buffer,
         'pwd-id-applications/photo-id',
         req.files.pwdPhotoId[0].originalname
       );
-      console.log('PWD Photo ID uploaded:', pwdPhotoId);
+      console.log('PWD Photo ID saved:', pwdPhotoId.url);
     }
 
     if (pwdMedia?.pwdSignature) {
-      console.log('Uploading pwd signature to Cloudinary...');
+      console.log('Saving pwd signature to local storage...');
       const signatureBuffer = base64ToBuffer(pwdMedia.pwdSignature);
-      pwdSignature = await uploadToCloudinary(
+      pwdSignature = await saveToLocal(
         signatureBuffer,
         'pwd-id-applications/applicant-signatures',
-        'applicant-signature'
+        'applicant-signature.png'
       );
-      console.log('PWD signature uploaded:', pwdSignature.url);
+      console.log('PWD signature saved:', pwdSignature.url);
     }
 
     if (residentId) {
@@ -106,8 +105,6 @@ export const createPwdIdApplication = async (req, res) => {
       accomplishedBy,
       certifiedPhysician
     });
-    
-    
 
     await connection.commit();
 
@@ -119,31 +116,50 @@ export const createPwdIdApplication = async (req, res) => {
   } catch (error) {
     await connection.rollback();
 
-    console.log('Database operation failed, cleaning up Cloudinary uploads...');
-    
-    try {
-      const publicIdsToDelete = [];
-
-      // Collect all public_ids that were successfully uploaded     
-      if (pwdPhotoId?.publicId) {
-        publicIdsToDelete.push(pwdPhotoId.publicId);
-      }
-      
-      if (pwdSignature?.publicId) {
-        publicIdsToDelete.push(pwdSignature.publicId);
-      }
-
-      // Delete all uploaded images from Cloudinary
-      if (publicIdsToDelete.length > 0) {
-        await deleteMultipleFromCloudinary(publicIdsToDelete);
-        console.log(`Cleaned up ${publicIdsToDelete.length} images from Cloudinary`);
-      }
-    } catch (cleanupError) {
-      // Log cleanup error but don't throw - we still want to return the original error
-      console.error('Error cleaning up Cloudinary uploads:', cleanupError);
-    }
+    await cleanupLocalStorageUploads({
+      pwdPhotoId,
+      pwdSignature
+    });
 
     console.error('Error creating post:', error);
+
+    // 🌐 Network / timeout (frontend usually triggers this, but still useful)
+    if (error.code === 'ECONNRESET' || error.code === 'ETIMEDOUT') {
+      return res.status(503).json(
+        apiError({
+          status: 503,
+          code: 'NETWORK_ERROR',
+          message: error.message,
+          userMessage:
+            'The connection was interrupted. Please check your internet connection and try again.'
+        })
+      );
+    }
+
+    // 🗄 MySQL / Database errors
+    if (error.code?.startsWith('ER_')) {
+      return res.status(500).json(
+        apiError({   
+          code: 'DATABASE_ERROR',
+          message: error.message,
+          userMessage:
+            'We could not save your survey due to a server issue. No data was lost. Please try again.'
+        })
+      );
+    }
+
+    // 📦 Invalid JSON / bad payload
+    if (error instanceof SyntaxError) {
+      return res.status(400).json(
+        apiError({
+          status: 400,
+          code: 'INVALID_PAYLOAD',
+          message: error.message,
+          userMessage:
+            'Some survey data is invalid. Please reload the page and try again.'
+        })
+      );
+    }
 
     if (error.code === 'ER_DUP_ENTRY') {
       return res.status(409).json({ 
@@ -152,10 +168,13 @@ export const createPwdIdApplication = async (req, res) => {
       });
     }
 
-    res.status(500).json({ 
-      success: false,
-      message: 'Server error' 
-    });
+    return res.status(500).json(
+      apiError({
+        message: error.message,
+        userMessage:
+          'The server encountered an unexpected error. Please try again later.'
+      })
+    );
   } finally {
     connection.release();
   }

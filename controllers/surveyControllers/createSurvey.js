@@ -21,8 +21,10 @@ import {
 } from '../../services/surveyService/createSurveyService.js';
 import { 
   base64ToBuffer, 
+  cleanupCloudinaryUploads, 
   getNextFamilyId 
 } from '../../utils/helpers.js';
+import { apiError } from '../../utils/apiError.js';
 
 
 export const createSurvey = async (req, res) => {
@@ -321,30 +323,3 @@ export const createSurvey = async (req, res) => {
     connection.release();
   }
 };
-
-// ================================================
-// HELPER FUNCTIONS
-// ================================================
-
-async function cleanupCloudinaryUploads({ houseImages, respondentPhoto, respondentSignature }) {
-  try {
-    const publicIdsToDelete = [];
-
-    if (houseImages?.length > 0) {
-      publicIdsToDelete.push(...houseImages.map(img => img.publicId));
-    }
-    if (respondentPhoto?.publicId) {
-      publicIdsToDelete.push(respondentPhoto.publicId);
-    }
-    if (respondentSignature?.publicId) {
-      publicIdsToDelete.push(respondentSignature.publicId);
-    }
-
-    if (publicIdsToDelete.length > 0) {
-      await deleteMultipleFromCloudinary(publicIdsToDelete);
-      console.log(`🧹 Cleaned up ${publicIdsToDelete.length} images from Cloudinary`);
-    }
-  } catch (error) {
-    console.error('Error cleaning up Cloudinary uploads:', error);
-  }
-}

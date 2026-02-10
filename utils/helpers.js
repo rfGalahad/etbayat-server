@@ -1,3 +1,7 @@
+import fs from 'fs/promises';
+import path from 'path';
+import { deleteMultipleFromCloudinary } from './cloudinaryUpload.js';
+
 export const parseIncome = (value) => {
   if (!value) return 0;
   const parsed = parseFloat(value.toString().replace(/,/g, '').trim());
@@ -27,6 +31,7 @@ export const base64ToBuffer = (base64) => {
   return Buffer.from(matches[2], 'base64');
 }
 
+
 export const getNextFamilyId = (latestFamilyId, baseId) => {
   
   if (!latestFamilyId) {
@@ -40,4 +45,98 @@ export const getNextFamilyId = (latestFamilyId, baseId) => {
   return [...parts, nextSuffix].join('-');
 }
 
+
+// Helper function to save file to local storage
+export const saveToLocal = async (buffer, folder, filename) => {
+  try {
+    // Define upload directory (adjust path as needed)
+    const uploadDir = path.join(process.cwd(), 'uploads', folder);
+    
+    // Create directory if it doesn't exist
+    await fs.mkdir(uploadDir, { recursive: true });
+    
+    // Generate unique filename with timestamp
+    const timestamp = Date.now();
+    const ext = path.extname(filename);
+    const baseName = path.basename(filename, ext);
+    const uniqueFilename = `${baseName}-${timestamp}${ext}`;
+    
+    // Full file path
+    const filePath = path.join(uploadDir, uniqueFilename);
+    
+    // Write file to disk
+    await fs.writeFile(filePath, buffer);
+    
+    // Return file info (similar structure to Cloudinary response)
+    return {
+      url: `/uploads/${folder}/${uniqueFilename}`,
+      filePath: filePath,
+      filename: uniqueFilename
+    };
+  } catch (error) {
+    console.error('Error saving file to local storage:', error);
+    throw error;
+  }
+};
+
+// Helper function to delete file from local storage
+export const deleteFromLocal = async (filePath) => {
+  return fs.unlink(filePath).catch(err => {
+    console.error(`Error deleting file ${filePath}:`, err);
+  });
+};
+
+
+export const cleanupCloudinaryUploads = async ({ 
+  houseImages, 
+  respondentPhoto, 
+  respondentSignature 
+}) => {
+  try {
+    const publicIdsToDelete = [];
+
+    if (houseImages?.length > 0) {
+      publicIdsToDelete.push(...houseImages.map(img => img.publicId));
+    }
+    if (respondentPhoto?.publicId) {
+      publicIdsToDelete.push(respondentPhoto.publicId);
+    }
+    if (respondentSignature?.publicId) {
+      publicIdsToDelete.push(respondentSignature.publicId);
+    }
+
+    if (publicIdsToDelete.length > 0) {
+      await deleteMultipleFromCloudinary(publicIdsToDelete);
+      console.log(`🧹 Cleaned up ${publicIdsToDelete.length} images from Cloudinary`);
+    }
+  } catch (error) {
+    console.error('Error cleaning up Cloudinary uploads:', error);
+  }
+}
+
+export const cleanupLocalStorageUploads = async ({ 
+  photoId, 
+  signature
+}) => {
+  try {
+    const filesToDelete = [];
+
+    // Collect all file paths that were successfully uploaded     
+    if (photoId?.filePath) {
+      filesToDelete.push(photoId.filePath);
+    }
+    
+    if (signature?.filePath) {
+      filesToDelete.push(signature.filePath);
+    }
+
+    // Delete all uploaded files from local storage
+    if (filesToDelete.length > 0) {
+      await Promise.all(filesToDelete.map(deleteFromLocal));
+      console.log(`Cleaned up ${filesToDelete.length} files from local storage`);
+    }
+  } catch (error) {
+    console.error('Error cleaning up local uploads:', error);
+  }
+}
 

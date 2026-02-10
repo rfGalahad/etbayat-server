@@ -418,25 +418,11 @@ export const updateApplicantInformationData = async (connection, data) => {
   );
 
   // HEALTH INFORMATION
-  await connection.query(
-    `UPDATE health_information 
-     SET blood_type = ?,
-         disability_type = ?,
-         disability_cause = ?,
-         disability_specific = ?
-     WHERE resident_id = ?`, 
-    [
-      data.personalInformation.bloodType || null,
-      data.disabilityInformation.disabilityType,
-      data.disabilityInformation.disabilityCause,
-      data.disabilityInformation.disabilitySpecific,
-      data.residentId
-    ]
-  );
+  
 
   // CONTACT INFORMATION
   await connection.query(
-    `UPDATE health_information 
+    `UPDATE contact_information 
      SET contact_number = ?,
          telephone_number = ?,
          email_address = ?
@@ -469,4 +455,138 @@ export const updateApplicantInformationData = async (connection, data) => {
   );
 };
 
+
+export const upsertApplicantInformationData = async (connection, data) => {
+
+  const residentId = data.residentId || data.tempResidentId;
+
+  // POPULATION
+  await connection.query(`
+    INSERT INTO population ( 
+      resident_id,
+      first_name,
+      middle_name,
+      last_name,
+      suffix,
+      sex,
+      birthdate,
+      civil_status
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    ON DUPLICATE KEY UPDATE
+      first_name = VALUES(first_name),
+      middle_name = VALUES(middle_name),
+      last_name = VALUES(last_name),
+      suffix = VALUES(suffix),
+      sex = VALUES(sex),
+      birthdate = VALUES(birthdate),
+      civil_status = VALUES(civil_status)`, 
+    [
+      residentId,
+      data.personalInformation.firstName,
+      data.personalInformation.middleName || null,
+      data.personalInformation.lastName,
+      data.personalInformation.suffix || null,
+      data.personalInformation.sex,
+      formatDateForMySQL(data.personalInformation.birthdate),
+      data.personalInformation.civilStatus
+    ]
+  );
+
+  // PWD CLASSIFICATION (only insert if new)
+  if (!data.residentId) {
+    await connection.query(`
+      INSERT IGNORE INTO social_classification ( 
+        resident_id,
+        classification_code,
+        classification_name
+      ) VALUES (?, ?, ?)`, 
+      [
+        residentId,
+        'PWD',
+        'Person with Disability'
+      ]
+    );
+  }
+
+  // PROFESSIONAL INFORMATION
+  await connection.query(`
+    INSERT INTO professional_information ( 
+      resident_id,
+      educational_attainment,
+      employment_status,
+      employment_type,
+      employment_category,
+      skills,
+      occupation
+    ) VALUES (?, ?, ?, ?, ?, ?, ?)
+    ON DUPLICATE KEY UPDATE
+      educational_attainment = VALUES(educational_attainment),
+      employment_status = VALUES(employment_status),
+      employment_type = VALUES(employment_type),
+      employment_category = VALUES(employment_category),
+      skills = VALUES(skills),
+      occupation = VALUES(occupation)`, 
+    [
+      residentId,
+      data.professionalInformation.educationalAttainment,
+      data.professionalInformation.employmentStatus,
+      data.professionalInformation.employmentType,
+      data.professionalInformation.employmentCategory,
+      data.professionalInformation.skills,
+      data.professionalInformation.occupation
+    ]
+  );
+
+  // HEALTH INFORMATION
+  await connection.query(`
+    INSERT INTO health_information ( 
+      resident_id,
+      blood_type,
+      disability_type,
+      disability_cause,
+      disability_specific
+    ) VALUES (?, ?, ?, ?, ?)
+    ON DUPLICATE KEY UPDATE
+      blood_type = VALUES(blood_type),
+      disability_type = VALUES(disability_type),
+      disability_cause = VALUES(disability_cause),
+      disability_specific = VALUES(disability_specific)`, 
+    [
+      residentId,
+      data.personalInformation.bloodType || null,
+      data.disabilityInformation.disabilityType,
+      data.disabilityInformation.disabilityCause,
+      data.disabilityInformation.disabilitySpecific
+    ]
+  );
+
+  // CONTACT INFORMATION
+  await connection.query(`
+    INSERT INTO contact_information ( 
+      resident_id,
+      street,
+      barangay,
+      contact_number,
+      telephone_number,
+      email_address
+    ) ALUES (?, ?, ?, ?, ?, ?)
+    ON DUPLICATE KEY UPDATE
+      street = VALUES(street),
+      barangay = VALUES(barangay),
+      contact_number = VALUES(contact_number),
+      telephone_number = VALUES(telephone_number)
+      email_address = VALUES(email_address)`, 
+    [
+      residentId,
+      data.contactInformation.houseStreet,
+      data.contactInformation.barangay,
+      data.contactInformation.contactNumber || null,
+      data.contactInformation.landlineNumber || null,
+      data.contactInformation.emailAddress || null
+    ]
+  );
+
+  // 
+  
+};
 

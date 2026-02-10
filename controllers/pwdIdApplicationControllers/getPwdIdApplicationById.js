@@ -247,7 +247,11 @@ export const getPwdIdApplicationById = async (req, res) => {
       )
     ]);
 
-    const personalInformation = personalInformationRows[0] || {};
+    const personalInformation = {
+      ...(personalInformationRows[0] || {}),
+      pwdId
+    };
+
     const professionalInformation = professionalInformationRows[0] || {};
     const contactInformation = contactInformationRows[0] || {};
     const disabilityInformation = disabilityInformationRows[0] || {};

@@ -13,55 +13,31 @@ export const getResidentInfo = async (req, res) => {
       [contactInformationRows]
     ] = await Promise.all([
       // PERSONAL INFORMATION
-      connection.query(
-        `SELECT
-          p.first_name as firstName,
-          p.middle_name as middleName,
-          p.last_name as lastName,
-          p.suffix,
-          DATE_FORMAT(p.birthdate, '%m-%d-%Y') as birthdate,
-          p.sex,
-          p.civil_status as civilStatus,
-          p.religion,
-          p.birthplace,
-          g.philsys as philsysNumber,
-
-
-          CASE
-            WHEN pa.pantawid_beneficiary =  1
-            THEN TRUE
-            ELSE FALSE
-          END AS pantawidBeneficiary,
-
-          pa.beneficiary_code as beneficiaryCode,
-          pa.household_id as householdId,
-
-          CASE
-            WHEN pa.indigenous_person = 1
-            THEN TRUE
-            ELSE FALSE
-          END AS indigenousPerson,
-
-          pa.indigenous_affiliation as indigenousAffiliation,
-
-          CASE
-            WHEN pa.lgbtq = 1
-            THEN TRUE
-            ELSE FALSE
-          END,
-
-          CASE
-            WHEN pa.pwd = 1
-            THEN TRUE
-            ELSE FALSE
-          END
-
+      connection.query(`
+        SELECT 
+            p.first_name AS firstName,
+            p.middle_name AS middleName,
+            p.last_name AS lastName,
+            p.suffix,
+            DATE_FORMAT(p.birthdate, '%m-%d-%Y') AS birthdate,
+            p.sex,
+            p.civil_status AS civilStatus,
+            p.religion,
+            p.birthplace,
+            g.philsys AS philsysNumber,
+            fi.household_id,
+            EXISTS (
+                SELECT 1
+                FROM social_classification sc
+                WHERE sc.resident_id = p.resident_id
+                  AND sc.classification_code = 'PWD'
+            ) AS pwd
         FROM population p
         LEFT JOIN government_ids g
-          ON p.resident_id = g.resident_id
-        INNER JOIN solo_parent_id_applications pa
-          ON p.resident_id = pa.resident_id
-        WHERE pa.resident_id = ?`,
+            ON g.resident_id = p.resident_id
+        JOIN family_information fi 
+            ON p.family_id = fi.family_id
+        WHERE p.resident_id = ?`,
         [residentId]
       ),
 
@@ -79,15 +55,21 @@ export const getResidentInfo = async (req, res) => {
       ),
 
       // CONTACT INFORMATION
-      connection.query(
-        `SELECT
-          street as houseStreet,
-          barangay,
-          telephone_number as landlineNumber,
-          contact_number as contactNumber,
-          email_address as emailAddress
-        FROM contact_information
-        WHERE resident_id = ?`,
+      connection.query(`
+        SELECT
+            h.street AS houseStreet,
+            h.barangay,
+            c.telephone_number as landlineNumber, 
+            c.contact_number as contactNumber, 
+            c.email_address as emailAddress
+        FROM population p
+        LEFT JOIN contact_information c
+            ON c.resident_id = p.resident_id
+        LEFT JOIN family_information fi
+            ON p.family_id = fi.family_id
+        LEFT JOIN households h
+            ON fi.household_id = h.household_id
+        WHERE p.resident_id = ?;`,
         [residentId]
       )
     ]);
