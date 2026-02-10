@@ -30,9 +30,9 @@ export const insertSurveyData = async (connection, data) => {
     [
       data.surveyId,
       data.userId,
-      data.familyInformation.respondentFirstName.trim(),
+      (data.familyInformation.respondentFirstName || '').trim(),
       (data.familyInformation.respondentMiddleName || '').trim(),
-      data.familyInformation.respondentLastName.trim(),
+      (data.familyInformation.respondentLastName || '').trim(),
       (data.familyInformation.respondentSuffix || '').trim(),
       data.respondentPhoto?.url || null,
       data.respondentPhoto?.publicId || null,
