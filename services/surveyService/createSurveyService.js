@@ -362,7 +362,7 @@ export const insertPopulationData = async (connection, residentValues) => {
       receiving_pension,
       pension_type,
       other_pension_type,
-      pension_amount
+      pension_income
     ) VALUES ?`,
     [professionalValues]
   );
