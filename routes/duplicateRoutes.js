@@ -12,6 +12,12 @@ router.get(
   duplicateController.getAllDuplicates
 );
 
+router.get(
+  '/ignored', 
+  authenticateToken, 
+  duplicateController.getAllIgnoredDuplicates
+);
+
 // IGNORE A DUPLICATE PAIR
 router.post(
   '/ignore',  // ← Changed from '/' to '/ignore' to avoid route conflict
