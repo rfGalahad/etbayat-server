@@ -155,7 +155,9 @@ export const prepareServiceAvailedValues = (familyId, serviceAvailed) => {
     familyId, 
     formatMonthYearForMySQL(service.dateServiceAvailed),
     service.ngoName,
+    service.otherNgoName,
     service.serviceAvailed,
+    service.otherServiceAvailed,
     Number(service.maleServed) || 0,
     Number(service.femaleServed) || 0,
     service.howServiceHelp
@@ -190,7 +192,8 @@ const preparePopulationValues = (familyId, familyProfile) => {
     member.specifyId,
     member.civilStatus || null,
     member.religion || null,
-    member.relationToFamilyHead || null,
+    member.relationToFamilyHead,
+    member.otherRelationship || null,
     member.birthplace || null,
   ]);
 };
@@ -203,6 +206,10 @@ const prepareProfessionalValues = (familyProfile) => {
     member.occupation || null,
     member.employmentType || null,
     parseIncome(member.monthlyIncome),
+    member.receivingPension,
+    member.pensionType,
+    member.otherPensionType || null,
+    parseIncome(member.pensionIncome)
   ]);
 }; 
 

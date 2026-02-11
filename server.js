@@ -6,6 +6,7 @@ import authRoutes from './routes/authRoutes.js';
 import activityLogRoutes from './routes/activityLogRoutes.js';
 import postRoutes from './routes/postRoutes.js';
 import surveyRoutes from './routes/surveyRoutes.js';
+import duplicateRoutes from './routes/duplicateRoutes.js'
 import pwdIdApplicationRoutes from './routes/pwdIdApplicationRoutes.js'
 import spIdApplicationRoutes from './routes/spIdApplicationRoutes.js'
 import seniorIdApplicationRoutes from './routes/seniorIdApplicationRoutes.js'
@@ -42,6 +43,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/activityLog', activityLogRoutes);
 app.use('/api/posts', postRoutes);
 app.use('/api/survey', surveyRoutes);
+app.use('/api/duplicate', duplicateRoutes);
 app.use('/api/pwd', pwdIdApplicationRoutes);
 app.use('/api/soloParent', spIdApplicationRoutes);
 app.use('/api/seniorCitizen', seniorIdApplicationRoutes);

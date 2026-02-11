@@ -248,214 +248,6 @@ export const insertPwdIdApplicationData = async (connection, data) => {
   );
 };
 
-export const insertApplicantInformationData = async (connection, data) => { 
-  if (data.residentId) return;
-
-  // POPULATION
-  await connection.query(`
-    INSERT INTO population ( 
-      resident_id,
-      first_name,
-      middle_name,
-      last_name,
-      suffix,
-      sex,
-      birthdate,
-      civil_status
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`, 
-    [
-      data.tempResidentId,
-      data.personalInformation.firstName,
-      data.personalInformation.middleName || null,
-      data.personalInformation.lastName,
-      data.personalInformation.suffix || null,
-      data.personalInformation.sex,
-      formatDateForMySQL(data.personalInformation.birthdate),
-      data.personalInformation.civilStatus
-    ]
-  );
-
-  // PWD CLASSIFICATION
-  await connection.query(`
-    INSERT INTO social_classification ( 
-      resident_id,
-      classification_code,
-      classification_name
-    ) VALUES (?, ?, ?)`, 
-    [
-      data.tempResidentId,
-      'PWD',
-      'Person with Disability'
-    ]
-  );
-
-  // PROFESSIONAL INFORMATION
-  await connection.query(`
-    INSERT INTO professional_information ( 
-      resident_id,
-      educational_attainment,
-      employment_status,
-      employment_type,
-      employment_category,
-      skills,
-      occupation
-    ) VALUES (?, ?, ?, ?, ?, ?, ?)`, 
-    [
-      data.tempResidentId,
-      data.professionalInformation.educationalAttainment,
-      data.professionalInformation.employmentStatus,
-      data.professionalInformation.employmentType,
-      data.professionalInformation.employmentCategory,
-      data.professionalInformation.skills,
-      data.professionalInformation.occupation
-    ]
-  );
-
-  // HEALTH INFORMATION
-  await connection.query(`
-    INSERT INTO health_information ( 
-      resident_id,
-      blood_type,
-      disability_type,
-      disability_cause,
-      disability_specific
-    ) VALUES (?, ?, ?, ?, ?)`, 
-    [
-      data.tempResidentId,
-      data.personalInformation.bloodType || null,
-      data.disabilityInformation.disabilityType,
-      data.disabilityInformation.disabilityCause,
-      data.disabilityInformation.disabilitySpecific
-    ]
-  );
-
-  // CONTACT INFORMATION
-  await connection.query(`
-    INSERT INTO contact_information (
-      resident_id,
-      street,
-      barangay,
-      contact_number,
-      telephone_number,
-      email_address
-    ) VALUES (?, ?, ?, ?, ?, ?)`, 
-    [
-      data.tempResidentId,
-      data.contactInformation.houseStreet,
-      data.contactInformation.barangay,
-      data.contactInformation.contactNumber || null,
-      data.contactInformation.landlineNumber || null,
-      data.contactInformation.emailAddress || null
-    ]
-  );
-
-  // GOVERNMENT IDs
-  await connection.query(`
-    INSERT INTO government_ids ( 
-      resident_id,
-      sss,
-      gsis,
-      psn,
-      philhealth,
-      pagibig
-    ) VALUES (?, ?, ?, ?, ?, ?)`, 
-    [
-      data.tempResidentId,
-      data.governmentIds.sssNumber || null,
-      data.governmentIds.gsisNumber || null,
-      data.governmentIds.psnNumber || null,
-      data.governmentIds.philhealthNumber || null,
-      data.governmentIds.pagibigNumber || null
-    ]
-  );
-};
-
-export const updateApplicantInformationData = async (connection, data) => { 
-  if (!data.residentId) return;
-
-  // POPULATION
-  await connection.query(
-    `UPDATE population 
-     SET first_name = ?,
-         middle_name = ?,
-         last_name = ?,
-         suffix = ?,
-         sex = ?,
-         birthdate = ?,
-         civil_status = ?
-     WHERE resident_id = ?`, 
-    [
-      data.personalInformation.firstName,
-      data.personalInformation.middleName || null,
-      data.personalInformation.lastName,
-      data.personalInformation.suffix || null,
-      data.personalInformation.sex,
-      formatDateForMySQL(data.personalInformation.birthdate),
-      data.personalInformation.civilStatus,
-      data.residentId
-    ]
-  );
-
-  // PROFESSIONAL INFORMATION
-  await connection.query(
-    `UPDATE professional_information 
-     SET educational_attainment = ?,
-         employment_status = ?,
-         employment_type = ?,
-         employment_category = ?,
-         skills = ?,
-         occupation = ?
-     WHERE resident_id = ?`, 
-    [
-      data.professionalInformation.educationalAttainment,
-      data.professionalInformation.employmentStatus,
-      data.professionalInformation.employmentType,
-      data.professionalInformation.employmentCategory,
-      data.professionalInformation.skills,
-      data.professionalInformation.occupation,
-      data.residentId
-    ]
-  );
-
-  // HEALTH INFORMATION
-  
-
-  // CONTACT INFORMATION
-  await connection.query(
-    `UPDATE contact_information 
-     SET contact_number = ?,
-         telephone_number = ?,
-         email_address = ?
-     WHERE resident_id = ?`, 
-    [
-      data.contactInformation.contactNumber || null,
-      data.contactInformation.landlineNumber || null,
-      data.contactInformation.emailAddress || null,
-      data.residentId
-    ]
-  );
-
-  // GOVERNMENT IDs
-  await connection.query(
-    `UPDATE government_ids 
-     SET sss = ?,
-         gsis = ?,
-         psn = ?,
-         philhealth = ?,
-         pagibig = ?
-     WHERE resident_id = ?`, 
-    [
-      data.governmentIds.sssNumber || null,
-      data.governmentIds.gsisNumber || null,
-      data.governmentIds.psnNumber || null,
-      data.governmentIds.philhealthNumber || null,
-      data.governmentIds.pagibigNumber || null,
-      data.residentId
-    ]
-  );
-};
-
-
 export const upsertApplicantInformationData = async (connection, data) => {
 
   const residentId = data.residentId || data.tempResidentId;
@@ -569,12 +361,12 @@ export const upsertApplicantInformationData = async (connection, data) => {
       contact_number,
       telephone_number,
       email_address
-    ) ALUES (?, ?, ?, ?, ?, ?)
+    ) VALUES (?, ?, ?, ?, ?, ?)
     ON DUPLICATE KEY UPDATE
       street = VALUES(street),
       barangay = VALUES(barangay),
       contact_number = VALUES(contact_number),
-      telephone_number = VALUES(telephone_number)
+      telephone_number = VALUES(telephone_number),
       email_address = VALUES(email_address)`, 
     [
       residentId,
@@ -586,7 +378,31 @@ export const upsertApplicantInformationData = async (connection, data) => {
     ]
   );
 
-  // 
+  // GOVERNMENT IDs
+  await connection.query(`
+    INSERT INTO government_ids ( 
+      resident_id,
+      sss,
+      gsis,
+      psn,
+      philhealth,
+      pagibig
+    ) VALUES (?, ?, ?, ?, ?, ?)
+    ON DUPLICATE KEY UPDATE
+      sss = VALUES(sss),
+      gsis = VALUES(gsis),
+      psn = VALUES(psn),
+      philhealth = VALUES(philhealth),
+      pagibig = VALUES(pagibig)`, 
+    [
+      residentId,
+      data.governmentIds.sssNumber || null,
+      data.governmentIds.gsisNumber || null,
+      data.governmentIds.psnNumber || null,
+      data.governmentIds.philhealthNumber || null,
+      data.governmentIds.pagibigNumber || null
+    ]
+  );
   
 };
 

@@ -293,7 +293,9 @@ export const insertFamilyData = async (connection, data) => {
         family_id,
         date_service_availed,
         ngo_name,
-        service_availed, 
+        other_ngo_name,
+        service_availed,
+        other_service_availed, 
         male_served,
         female_served,
         how_service_help
@@ -330,6 +332,7 @@ export const insertPopulationData = async (connection, residentValues) => {
       civil_status,
       religion,
       relation_to_family_head,
+      other_relationship,
       birthplace
     ) VALUES ?`,
     [populationValues]
@@ -355,7 +358,11 @@ export const insertPopulationData = async (connection, residentValues) => {
       skills,
       occupation,
       employment_type,
-      monthly_income
+      monthly_income,
+      receiving_pension,
+      pension_type,
+      other_pension_type,
+      pension_amount
     ) VALUES ?`,
     [professionalValues]
   );

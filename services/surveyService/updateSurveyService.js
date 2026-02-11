@@ -405,7 +405,9 @@ const syncServiceAvailed = async (
       UPDATE service_availed
       SET date_service_availed = ?,
           ngo_name = ?,
+          other_ngo_name = ?,
           service_availed = ?,
+          other_service_availed = ?,
           male_served = ?,
           female_served = ?,
           how_service_help = ?
@@ -414,7 +416,9 @@ const syncServiceAvailed = async (
     `, [
       formatMonthYearForMySQL(service.dateServiceAvailed),
       service.ngoName,
-      service.serviceAvailed, 
+      service.otherNgoName || null,
+      service.serviceAvailed,
+      service.otherServiceAvailed || null, 
       service.maleServed,
       service.femaleServed,
       service.howServiceHelp,
@@ -430,7 +434,9 @@ const syncServiceAvailed = async (
       familyId,
       formatMonthYearForMySQL(s.dateServiceAvailed),
       s.ngoName,
+      s.otherNgoName,
       s.serviceAvailed,
+      s.otherServiceAvailed,
       s.maleServed,
       s.femaleServed,
       s.howServiceHelp
@@ -441,7 +447,9 @@ const syncServiceAvailed = async (
         family_id,
         date_service_availed,
         ngo_name,
+        other_ngo_name,
         service_availed,
+        other_service_availed,
         male_served,
         female_served,
         how_service_help
@@ -549,6 +557,7 @@ export const syncPopulation = async (
   familyProfile,
   newFamilyId = null
 ) => {
+
   try {
     const targetFamilyId = newFamilyId || familyId;
     
@@ -694,9 +703,9 @@ export const syncPopulation = async (
     const values = updatedFamilyProfile.map(r => [
       r.residentId,
       targetFamilyId,
-      r.firstName,
-      r.middleName,
-      r.lastName,
+      r.firstName.trim(),
+      (r.middleName || null).trim(),
+      r.lastName.trim(),
       r.suffix || null,
       r.sex,
       formatDateForMySQL(r.birthdate),
@@ -705,6 +714,7 @@ export const syncPopulation = async (
       r.civilStatus,
       r.religion,
       r.relationToFamilyHead,
+      r.otherRelationship || null,
       r.birthplace
     ]);
 
@@ -724,6 +734,7 @@ export const syncPopulation = async (
         civil_status,
         religion,
         relation_to_family_head,
+        other_relationship,
         birthplace
       )
       VALUES ?
@@ -739,6 +750,7 @@ export const syncPopulation = async (
         civil_status = VALUES(civil_status),
         religion = VALUES(religion),
         relation_to_family_head = VALUES(relation_to_family_head),
+        other_relationship = VALUES(other_relationship),
         birthplace = VALUES(birthplace)
       `,
       [values]
@@ -847,7 +859,11 @@ export const syncProfessionalInformation = async (
         r.employmentCategory ||
         r.employmentType ||
         r.monthlyIncome ||
-        r.annualIncome;
+        r.annualIncome ||
+        r.receivingPension ||
+        r.pensionType || 
+        r.otherPensionType ||
+        r.pensionIncome;
 
       if (hasProfessionalData) {
         withProfessional.push(r);
@@ -879,7 +895,11 @@ export const syncProfessionalInformation = async (
         r.employmentCategory || null,
         r.employmentType || null,
         parseIncome(r.monthlyIncome),
-        parseIncome(r.annualIncome)
+        parseIncome(r.annualIncome),
+        r.receivingPension,
+        r.pensionType,
+        r.otherPensionType || null,
+        parseIncome(r.pensionIncome)
       ]);
 
       await connection.query(
@@ -894,7 +914,11 @@ export const syncProfessionalInformation = async (
           employment_category,
           employment_type,
           monthly_income,
-          annual_income
+          annual_income,
+          receiving_pension,
+          pension_type,
+          other_pension_type,
+          pension_income
         )
         VALUES ?
         ON DUPLICATE KEY UPDATE
@@ -906,7 +930,11 @@ export const syncProfessionalInformation = async (
           employment_category = VALUES(employment_category),
           employment_type = VALUES(employment_type),
           monthly_income = VALUES(monthly_income),
-          annual_income = VALUES(annual_income)
+          annual_income = VALUES(annual_income),
+          receiving_pension = VALUES(receiving_pension),
+          pension_type = VALUES(pension_type),
+          other_pension_type = VALUES(other_pension_type),
+          pension_income = VALUES(pension_income)
         `,
         [values]
       );

@@ -140,3 +140,17 @@ export const cleanupLocalStorageUploads = async ({
   }
 }
 
+// utils/fileHelpers.js
+export const getFileUrl = (filePath, req) => {
+  if (!filePath) return null;
+  const baseUrl = process.env.BASE_URL || `${req.protocol}://${req.get('host')}`;
+  return `${baseUrl}/uploads/${filePath}`;
+};
+
+export const getFileUrls = (files, req) => {
+  return Object.entries(files).reduce((acc, [key, path]) => {
+    acc[key] = getFileUrl(path, req);
+    return acc;
+  }, {});
+};
+

@@ -15,13 +15,6 @@ router.get(
   surveyController.getAllSurveys
 );
 
-// GET ALL DUPLICATES
-router.get(
-  '/duplicates', 
-  authenticateToken, 
-  surveyController.getAllDuplicates
-);
-
 // CREATE SURVEY
 router.post(
   '/', 

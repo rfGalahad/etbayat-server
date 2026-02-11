@@ -76,7 +76,8 @@ export const getSurveyById = async (req, res) => {
           p.suffix,
           p.sex,
           DATE_FORMAT(p.birthdate, '%m-%d-%Y') as birthdate,
-
+          TIMESTAMPDIFF(YEAR, p.birthdate, CURDATE()) AS age,
+          
           CASE
             WHEN p.verified_birthdate = 1
             THEN TRUE
@@ -88,6 +89,7 @@ export const getSurveyById = async (req, res) => {
           p.civil_status as civilStatus,
           p.religion,
           p.relation_to_family_head as relationToFamilyHead,
+          p.other_relationship AS otherRelationship,
           p.birthplace, 
 
           pi.educational_attainment as educationalAttainment, 
@@ -95,6 +97,16 @@ export const getSurveyById = async (req, res) => {
           pi.occupation,
           pi.employment_type as employmentType,
           CAST(pi.monthly_income AS UNSIGNED) as monthlyIncome,
+
+          CASE
+            WHEN pi.receiving_pension = 1
+            THEN TRUE
+            ELSE FALSE
+          END as receivingPension,
+
+          pi.pension_type AS pensionType,
+          pi.other_pension_type AS otherPensionType,
+          CAST(pi.pension_income AS UNSIGNED) as pensionIncome,
 
           ci.contact_number as contactNumber,
 
@@ -354,7 +366,9 @@ export const getSurveyById = async (req, res) => {
           service_availed_id as serviceAvailedId,
           DATE_FORMAT(date_service_availed, '%m-%Y') AS dateServiceAvailed,
           ngo_name as ngoName,
+          other_ngo_name AS otherNgoName,
           service_availed as serviceAvailed,
+          other_service_availed AS otherServiceAvailed,
           male_served as maleServed,
           female_served as femaleServed,
           how_service_help as howServiceHelp

@@ -26,23 +26,31 @@ class UnionFind {
 
 export const getAllDuplicates = async (req, res) => {
   try {
-    // 1️⃣ Pre-filter candidate duplicates using SQL
+    // 1️⃣ Get ignored pairs
+    const [ignoredPairs] = await pool.query(`
+      SELECT 
+        resident_id_1,
+        resident_id_2
+      FROM ignored_duplicates
+    `);
+    
+    const ignoredSet = new Set(
+      ignoredPairs.map(p => `${p.resident_id_1}-${p.resident_id_2}`)
+    );
+
+    // 2️⃣ Pre-filter candidate duplicates using SQL
     const [rows] = await pool.query(`
       SELECT
           p1.resident_id,
           p2.resident_id AS possible_duplicate_id,
-
           fi1.survey_id AS survey_id_1,
           fi2.survey_id AS survey_id_2,
-
           p1.first_name AS first_name_1,
           p2.first_name AS first_name_2,
           p1.last_name  AS last_name_1,
           p2.last_name  AS last_name_2,
-
           DATE_FORMAT(p1.birthdate, '%m-%d-%Y') AS birthdate_1,
           DATE_FORMAT(p2.birthdate, '%m-%d-%Y') AS birthdate_2,
-
           p1.sex
       FROM population p1
       JOIN population p2
@@ -50,18 +58,20 @@ export const getAllDuplicates = async (req, res) => {
        AND p1.sex = p2.sex
        AND SOUNDEX(p1.first_name) = SOUNDEX(p2.first_name)
        AND SOUNDEX(p1.last_name)  = SOUNDEX(p2.last_name)
-
       JOIN family_information fi1
         ON p1.family_id = fi1.family_id
       JOIN family_information fi2
         ON p2.family_id = fi2.family_id
-
-      -- Uncomment to only compare within same survey
-      -- AND fi1.survey_id = fi2.survey_id
     `);
 
-    // 2️⃣ Apply Levenshtein distance and similarity scoring
-    const duplicates = rows
+    // 3️⃣ Filter out ignored pairs
+    const filteredRows = rows.filter(row => {
+      const pairKey = `${row.resident_id}-${row.possible_duplicate_id}`;
+      return !ignoredSet.has(pairKey);
+    });
+
+    // 4️⃣ Apply Levenshtein distance and similarity scoring
+    const duplicates = filteredRows
       .map(row => {
         const fnameDistance = levenshtein.get(
           row.first_name_1.toLowerCase(),
@@ -97,7 +107,7 @@ export const getAllDuplicates = async (req, res) => {
         d.similarityScore >= 3
       );
 
-    // 3️⃣ Cluster duplicates using Union-Find
+    // 5️⃣ Cluster duplicates using Union-Find
     const uf = new UnionFind();
     duplicates.forEach(d =>
       uf.union(d.resident_id, d.possible_duplicate_id)
@@ -136,7 +146,7 @@ export const getAllDuplicates = async (req, res) => {
       }
     });
 
-    // 4️⃣ Format clusters
+    // 6️⃣ Format clusters
     const clusters = Array.from(clustersMap.values())
       .map((membersMap, index) => ({
         cluster_id: `CLUSTER-${index + 1}`,
@@ -150,6 +160,7 @@ export const getAllDuplicates = async (req, res) => {
       data: {
         total_duplicates: duplicates.length,
         total_clusters: clusters.length,
+        total_ignored: ignoredPairs.length,
         clusters
       }
     });

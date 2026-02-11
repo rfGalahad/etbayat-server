@@ -1,6 +1,5 @@
 import pool from '../../config/db.js';
 import { 
-  generatePwdId, 
   generateTemporaryResidentId 
 } from './generateId.js';
 import { 
@@ -8,25 +7,35 @@ import {
   saveToLocal,
   cleanupLocalStorageUploads
 } from '../../utils/helpers.js';
-import { 
-  insertApplicantInformationData, 
+import {  
   insertPwdIdApplicationData, 
-  updateApplicantInformationData
+  upsertApplicantInformationData
 } from '../../services/pwdIdApplicationService/createPwdIdApplicationService.js';
-
+import { apiError } from '../../utils/apiError.js'
 
 export const createPwdIdApplication = async (req, res) => {
 
   const connection = await pool.getConnection();
 
-  let pwdSignature = null;
-  let pwdPhotoId = null;
+  const uploadedFiles = {
+    pwdPhotoId: null,
+    pwdSignature: null
+  };
 
   try {
     await connection.beginTransaction();
 
     const { userId } = req.user;
-    const formData = JSON.parse(req.body.formData);
+    
+    let formData;
+    try {
+      formData = JSON.parse(req.body.formData);
+    } catch (parseError) {
+      throw Object.assign(new SyntaxError('Invalid form data'), { 
+        userMessage: 'The form data is invalid. Please try again.' 
+      });
+    }
+
     const {
       residentId,
       personalInformation,
@@ -41,65 +50,61 @@ export const createPwdIdApplication = async (req, res) => {
       pwdMedia
     } = formData
 
+    if (!personalInformation?.pwdId) {
+      return res.status(400).json(
+        apiError({
+          status: 400,
+          code: 'MISSING_PWD_ID',
+          message: 'PWD ID is required',
+          userMessage: 'PWD ID is required to create an application.'
+        })
+      );
+    }
+
     const pwdId = personalInformation.pwdId;
-    
-    const tempId = await generateTemporaryResidentId(connection);
-    const tempResidentId = `T-RID-${tempId}`;
+    const tempResidentId = residentId 
+      ? null 
+      : `T-RID-${await generateTemporaryResidentId(connection)}`;
 
     // UPLOAD IMAGES TO LOCAL STORAGE    
     if (req.files?.pwdPhotoId?.[0]) {
       console.log('Saving photo id to local storage...');
-      pwdPhotoId = await saveToLocal(
+      uploadedFiles.pwdPhotoId = await saveToLocal(
         req.files.pwdPhotoId[0].buffer,
         'pwd-id-applications/photo-id',
         req.files.pwdPhotoId[0].originalname
       );
-      console.log('PWD Photo ID saved:', pwdPhotoId.url);
+      console.log('PWD Photo ID saved:', uploadedFiles.pwdPhotoId.url);
     }
 
     if (pwdMedia?.pwdSignature) {
       console.log('Saving pwd signature to local storage...');
       const signatureBuffer = base64ToBuffer(pwdMedia.pwdSignature);
-      pwdSignature = await saveToLocal(
+      uploadedFiles.pwdSignature = await saveToLocal(
         signatureBuffer,
         'pwd-id-applications/applicant-signatures',
-        'applicant-signature.png'
+        `${pwdId}-signature-${Date.now()}.png`
       );
-      console.log('PWD signature saved:', pwdSignature.url);
+      console.log('PWD signature saved:', uploadedFiles.pwdSignature.url);
     }
 
-    if (residentId) {
-      console.log('Update')
-      // APPLICANT INFORMATION - RESIDENT
-      await updateApplicantInformationData(connection, { 
-        residentId, 
-        personalInformation, 
-        professionalInformation,
-        disabilityInformation,
-        contactInformation,
-        governmentIds
-      });
-    } else if (!residentId) {
-      console.log('Resident')
-      // APPLICANT INFORMATION - NOT RESIDENT
-      await insertApplicantInformationData(connection, { 
-        tempResidentId, 
-        personalInformation, 
-        professionalInformation,
-        disabilityInformation,
-        contactInformation,
-        governmentIds
-      });
-    }
+    await upsertApplicantInformationData(connection, { 
+      residentId: residentId || null, 
+      tempResidentId,                   
+      personalInformation,  
+      professionalInformation, 
+      disabilityInformation, 
+      contactInformation, 
+      governmentIds 
+    });
     
     // PWD ID APPLICATION
     await insertPwdIdApplicationData(connection, { 
       pwdId, 
       userId,
-      tempResidentId,
-      residentId, 
-      pwdPhotoId,
-      pwdSignature,
+      residentId: residentId || tempResidentId, 
+      pwdPhotoId: uploadedFiles.pwdPhotoId,
+      pwdSignature: uploadedFiles.pwdSignature,
       otherInformation,
       familyBackground,
       accomplishedBy,
@@ -116,12 +121,21 @@ export const createPwdIdApplication = async (req, res) => {
   } catch (error) {
     await connection.rollback();
 
-    await cleanupLocalStorageUploads({
-      pwdPhotoId,
-      pwdSignature
-    });
+    await cleanupLocalStorageUploads(uploadedFiles);
 
     console.error('Error creating post:', error);
+
+    // Duplicated Pwd Id 
+    if (error.code === 'ER_DUP_ENTRY') {
+      return res.status(409).json(
+        apiError({
+          status: 409,
+          code: 'DUPLICATE_PWD_ID',
+          message: 'PWD ID already exists',
+          userMessage: 'This PWD ID is already registered. Please use a different ID.'
+        })
+      );
+    }
 
     // 🌐 Network / timeout (frontend usually triggers this, but still useful)
     if (error.code === 'ECONNRESET' || error.code === 'ETIMEDOUT') {
@@ -161,13 +175,7 @@ export const createPwdIdApplication = async (req, res) => {
       );
     }
 
-    if (error.code === 'ER_DUP_ENTRY') {
-      return res.status(409).json({ 
-        success: false,
-        message: 'PWD ID already exists' 
-      });
-    }
-
+    // Generic Error
     return res.status(500).json(
       apiError({
         message: error.message,
