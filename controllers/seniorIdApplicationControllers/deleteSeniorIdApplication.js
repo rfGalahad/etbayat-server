@@ -1,5 +1,5 @@
 import pool from '../../config/db.js';
-import { deleteMultipleFromCloudinary } from '../../utils/cloudinaryUpload.js';
+import { deleteMultipleFromCloudinary } from '../../utils/cloudinaryUtils.js';
 
 
 export const deleteSeniorIdApplication = async (req, res) => {

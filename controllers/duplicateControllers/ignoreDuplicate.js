@@ -16,7 +16,9 @@ export const ignoreDuplicate = async (req, res) => {
     
     res.status(200).json({ 
       success: true, 
-      message: 'Duplicate ignored' 
+      message: 'Duplicate ignored',
+      residentId1: resident_id_1,
+      residentId2: resident_id_2
     });
   } catch (error) {
     console.error(error)

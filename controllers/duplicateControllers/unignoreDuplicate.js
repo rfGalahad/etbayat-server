@@ -23,7 +23,9 @@ export const unignoreDuplicate = async (req, res) => {
     
     res.status(200).json({ 
       success: true, 
-      message: 'Duplicate pair un-ignored successfully' 
+      message: 'Duplicate pair un-ignored successfully',
+      residentId1: resident_id_1,
+      residentId2: resident_id_2
     });
   } catch (error) {
     console.error('Error un-ignoring duplicate:', error);

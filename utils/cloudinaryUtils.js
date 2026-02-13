@@ -1,14 +1,5 @@
-// utils/cloudinaryUpload.js
 import cloudinary from '../config/cloudinary.js';
 import { Readable } from 'stream';
-
-/**
- * Upload image buffer to Cloudinary
- * @param {Buffer} buffer - Image buffer
- * @param {string} folder - Cloudinary folder name
- * @param {string} filename - Original filename
- * @returns {Promise<{url: string, publicId: string}>} - Cloudinary URL and public_id
- */
 
 export const uploadToCloudinary = (buffer, folder, filename) => {
   return new Promise((resolve, reject) => {
@@ -39,13 +30,6 @@ export const uploadToCloudinary = (buffer, folder, filename) => {
   });
 };
 
-/**
- * Upload multiple images to Cloudinary
- * @param {Array} files - Array of file objects
- * @param {string} folder - Cloudinary folder name
- * @returns {Promise<Array<{url: string, publicId: string}>>} - Array of Cloudinary URLs and public_ids
- */
-
 export const uploadMultipleToCloudinary = async (files, folder) => {
   if (!files || files.length === 0) return [];
   
@@ -56,12 +40,6 @@ export const uploadMultipleToCloudinary = async (files, folder) => {
   return await Promise.all(uploadPromises);
 };
 
-
-/**
- * Delete image from Cloudinary
- * @param {string} publicId - Cloudinary public_id
- * @returns {Promise<void>}
- */
 export const deleteFromCloudinary = async (publicId) => {
   try {
     await cloudinary.uploader.destroy(publicId);
@@ -72,14 +50,36 @@ export const deleteFromCloudinary = async (publicId) => {
   }
 };
 
-/**
- * Delete multiple images from Cloudinary
- * @param {Array<string>} publicIds - Array of Cloudinary public_ids
- * @returns {Promise<void>}
- */
 export const deleteMultipleFromCloudinary = async (publicIds) => {
   if (!publicIds || publicIds.length === 0) return;
   
   const deletePromises = publicIds.map(id => deleteFromCloudinary(id));
   await Promise.all(deletePromises);
 };
+
+export const cleanupCloudinaryUploads = async ({ 
+  houseImages, 
+  respondentPhoto, 
+  respondentSignature 
+}) => {
+  try {
+    const publicIdsToDelete = [];
+
+    if (houseImages?.length > 0) {
+      publicIdsToDelete.push(...houseImages.map(img => img.publicId));
+    }
+    if (respondentPhoto?.publicId) {
+      publicIdsToDelete.push(respondentPhoto.publicId);
+    }
+    if (respondentSignature?.publicId) {
+      publicIdsToDelete.push(respondentSignature.publicId);
+    }
+
+    if (publicIdsToDelete.length > 0) {
+      await deleteMultipleFromCloudinary(publicIdsToDelete);
+      console.log(`🧹 Cleaned up ${publicIdsToDelete.length} images from Cloudinary`);
+    }
+  } catch (error) {
+    console.error('Error cleaning up Cloudinary uploads:', error);
+  }
+}

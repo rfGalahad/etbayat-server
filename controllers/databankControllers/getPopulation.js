@@ -27,7 +27,6 @@ export const getPopulation = async (req, res) => {
       ORDER BY name ASC;
     `);
     
-    console.log('ROWS', rows)
     res.status(200).json({
       success: true,
       data: rows

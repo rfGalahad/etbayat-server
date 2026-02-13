@@ -1,7 +1,11 @@
 import pool from '../../config/db.js';
 import cloudinary from '../../config/cloudinary.js';
-import { base64ToBuffer } from '../../utils/helpers.js';
-import { uploadToCloudinary } from '../../utils/cloudinaryUpload.js';
+import { 
+  base64ToBuffer 
+} from '../../utils/fileUtils.js';
+import { 
+  uploadToCloudinary 
+} from '../../utils/cloudinaryUtils.js';
 import { 
   updateApplicantInformationData,  
   updateSeniorIdApplicationData

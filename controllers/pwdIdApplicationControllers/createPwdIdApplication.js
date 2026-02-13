@@ -2,16 +2,18 @@ import pool from '../../config/db.js';
 import { 
   generateTemporaryResidentId 
 } from './generateId.js';
-import { 
-  base64ToBuffer, 
+import {
+  base64ToBuffer,
   saveToLocal,
   cleanupLocalStorageUploads
-} from '../../utils/helpers.js';
+} from '../../utils/fileUtils.js'
 import {  
   insertPwdIdApplicationData, 
   upsertApplicantInformationData
 } from '../../services/pwdIdApplicationService/createPwdIdApplicationService.js';
-import { apiError } from '../../utils/apiError.js'
+import { 
+  apiError 
+} from '../../utils/apiResponse.js'
 
 export const createPwdIdApplication = async (req, res) => {
 

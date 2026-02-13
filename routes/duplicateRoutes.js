@@ -23,7 +23,7 @@ router.post(
   '/ignore',  // ← Changed from '/' to '/ignore' to avoid route conflict
   authenticateToken, 
   activityLogger((req, resData) => 
-    `Ignored duplicate pair: ${req.body.resident_id_1} and ${req.body.resident_id_2}`
+    `Ignored duplicate pair: ${resData.residentId1} and ${resData.residentId2}`
   ),
   duplicateController.ignoreDuplicate
 );
@@ -33,7 +33,7 @@ router.delete(
   '/ignore',
   authenticateToken,
   activityLogger((req, resData) => 
-    `Un-ignored duplicate pair: ${req.body.resident_id_1} and ${req.body.resident_id_2}`
+    `Un-ignored duplicate pair: ${resData.residentId1} and ${resData.residentId2}`
   ),
   duplicateController.unignoreDuplicate
 );

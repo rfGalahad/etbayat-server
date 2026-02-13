@@ -1,6 +1,251 @@
-import { parseIncome } from "../../utils/helpers.js";
+import pool from '../../config/db.js';
+import { 
+  generateHouseholdId, 
+  generateSurveyId 
+} from '../../controllers/surveyControllers/generateId.js';
+import {
+  safeTrim
+} from '../../utils/stringUtils.js';
+import { 
+  parseIncome 
+} from "../../utils/numberUtils.js";
+import { 
+  prepareResidentValues,
+  prepareServiceAvailedValues,
+  prepareSurveyDataValues 
+} from '../../utils/transformers/surveyDataTransformers.js';
+import { 
+  cleanupCloudinaryUploads, 
+  uploadMultipleToCloudinary,
+  uploadToCloudinary
+} from '../../utils/cloudinaryUtils.js';
+import {
+  base64ToBuffer
+} from '../../utils/fileUtils.js';
+
+
+const ID_PREFIXES = {
+  SURVEY: 'SID-',
+  HOUSEHOLD: 'HID-',
+  FAMILY: 'FID-'
+}
+
+const CLOUDINARY_PATHS = {
+  HOUSE_IMAGES: 'surveys/house-images',
+  RESPONDENT_PHOTOS: 'surveys/respondent-photos',
+  RESPONDENT_SIGNATURES: 'surveys/respondent-signatures'
+};
+
+
+export const createSurveyService = async (formData, userId, files) => {
+
+  const connection = await pool.getConnection();
+
+  let houseImages = [];
+  let respondentSignature = null;
+  let respondentPhoto = null;
+
+  const {
+    familyInformation,
+    familyProfile,
+    householdInformation,
+    waterInformation,
+    farmlots,
+    communityIssues,
+    serviceAvailed,
+    acknowledgement
+  } = formData
+
+  try {
+
+    await connection.beginTransaction();
+
+    ////////////////////////////////////////////////////////////////////////////////
+
+    // GENERATE IDs
+
+    const surveyId = `${ID_PREFIXES.SURVEY}${await generateSurveyId(connection)}`;
+    const tempHouseholdId = await generateHouseholdId(connection);
+    let householdId = `${ID_PREFIXES.HOUSEHOLD}${tempHouseholdId}`;
+    let familyId;
+
+    ////////////////////////////////////////////////////////////////////////////////
+
+    // CHECK IF MULTIPLE FAMILY IN ONE HOUSEHOLD
+
+    if (householdInformation.multipleFamily) {
+      const [existingPerson] = await connection.query(`
+        SELECT p.family_id, f.household_id
+        FROM population p
+        JOIN family_information f ON f.family_id = p.family_id
+        WHERE p.first_name = ?
+          AND (p.middle_name <=> ?)
+          AND p.last_name = ?
+          AND (p.suffix <=> ?)
+          AND p.relation_to_family_head = 'Family Head'
+        LIMIT 1
+      `, [
+        householdInformation.familyHeadFirstName,
+        householdInformation.familyHeadMiddleName || null,
+        householdInformation.familyHeadLastName,
+        householdInformation.familyHeadSuffix || null
+      ]);
+
+      if (existingPerson.length > 0) {
+        householdId = existingPerson[0].household_id;
+
+        const [latestFamily] = await connection.query(`
+          SELECT family_id
+          FROM family_information
+          WHERE household_id = ?
+          ORDER BY family_id DESC
+          LIMIT 1
+        `, [householdId]);
+
+        familyId = getNextFamilyId(
+          latestFamily[0]?.family_id,
+          householdId.replace(ID_PREFIXES.HOUSEHOLD, '')
+        );
+      } else {
+        householdId = `${ID_PREFIXES.HOUSEHOLD}${tempHouseholdId}`;
+        familyId = `${ID_PREFIXES.FAMILY}${tempHouseholdId}-A`;
+      }
+    } else {
+      householdId = `${ID_PREFIXES.HOUSEHOLD}${tempHouseholdId}`;
+      familyId = `${ID_PREFIXES.FAMILY}${tempHouseholdId}-A`;
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////
+
+    // UPLOAD IMAGES TO CLOUDINARY
+
+    if (files?.houseImages) {
+      houseImages = await uploadMultipleToCloudinary(
+        files.houseImages, 
+        CLOUDINARY_PATHS.HOUSE_IMAGES
+      );
+    }
+
+    if (files?.respondentPhoto?.[0]) {
+      respondentPhoto = await uploadToCloudinary(
+        files.respondentPhoto[0].buffer,
+        CLOUDINARY_PATHS.RESPONDENT_PHOTOS,
+        files.respondentPhoto[0].originalname
+      );
+    }
+
+    if (acknowledgement?.respondentSignature) {
+      const signatureBuffer = base64ToBuffer(acknowledgement.respondentSignature);
+      respondentSignature = await uploadToCloudinary(
+        signatureBuffer,
+        CLOUDINARY_PATHS.RESPONDENT_SIGNATURES,
+        'respondent-signature'
+      );
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////
+
+    // SURVEY DATA
+
+    const surveyData = prepareSurveyDataValues(surveyId, formData);
+
+    await insertSurveyData(connection, { 
+      surveyId, 
+      userId, 
+      familyInformation,
+      respondentPhoto,
+      respondentSignature,
+      surveyData,
+      farmlots,
+      communityIssues,
+      waterInformation
+    });
+    
+    ////////////////////////////////////////////////////////////////////////////////
+
+    // HOUSEHOLD DATA
+
+    const imageValues = houseImages.map((img, index) => [ 
+      householdId, 
+      img.url, 
+      img.publicId, 
+      householdInformation.houseImageTitles[index] 
+    ]);
+
+    await insertHouseholdData(connection, { 
+      householdId, 
+      surveyId, 
+      householdInformation,
+      imageValues
+    });
+
+    ////////////////////////////////////////////////////////////////////////////////
+
+    // FAMILY DATA
+
+    const serviceAvailedValues = prepareServiceAvailedValues(
+      familyId, 
+      serviceAvailed
+    );
+
+    await insertFamilyData(connection, {
+      familyId,
+      householdId,
+      surveyId,
+      familyInformation,
+      serviceAvailedValues
+    })
+
+    ////////////////////////////////////////////////////////////////////////////////
+
+    // POPULATION DATA
+
+    const residentValues = prepareResidentValues(familyId, familyProfile);
+    await insertPopulationData(connection, residentValues);
+
+    ////////////////////////////////////////////////////////////////////////////////
+
+    await connection.commit();
+
+    return surveyId;
+  } catch (error) {
+    await connection.rollback();
+
+    console.error('❌ Survey creation failed:', {
+      error: error.message,
+      surveyId,
+      userId,
+      timestamp: new Date().toISOString()
+    });
+
+    await cleanupCloudinaryUploads({
+      houseImages,
+      respondentPhoto,
+      respondentSignature
+    });
+
+    throw new SurveyCreationError('Failed to create survey', {
+      cause: error,
+      surveyId,
+      userId
+    });
+  } finally {
+    connection.release();
+  }
+}
+
+
+//////////////////////////////////////////////////////////////////
+
 
 export const insertSurveyData = async (connection, data) => {
+
+  const surveyId = data.surveyId;
+  const userId = data.userId;
+  const familyInformation = data.familyInformation;
+  const farmlots = data.farmlots;
+  const communityIssues = data.communityIssues;
+  const waterInformation = data.waterInformation;
 
   const foodValues = data.surveyData.foodValues;
   const educationValues = data.surveyData.educationValues;
@@ -28,12 +273,12 @@ export const insertSurveyData = async (connection, data) => {
       respondent_signature_id
     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
-      data.surveyId,
-      data.userId,
-      (data.familyInformation.respondentFirstName || '').trim(),
-      (data.familyInformation.respondentMiddleName || '').trim(),
-      (data.familyInformation.respondentLastName || '').trim(),
-      (data.familyInformation.respondentSuffix || '').trim(),
+      surveyId,
+      userId,
+      safeTrim(familyInformation.respondentFirstName),
+      safeTrim(familyInformation.respondentMiddleName),
+      safeTrim(familyInformation.respondentLastName),
+      safeTrim(familyInformation.respondentSuffix),
       data.respondentPhoto?.url || null,
       data.respondentPhoto?.publicId || null,
       data.respondentSignature?.url || null,
@@ -103,7 +348,7 @@ export const insertSurveyData = async (connection, data) => {
   }
   
   // FARM LOTS
-  if (data.farmlots) {
+  if (farmlots) {
     await connection.query(
       `INSERT INTO farm_lots (
         survey_id, 
@@ -113,11 +358,11 @@ export const insertSurveyData = async (connection, data) => {
         forestland
       ) VALUES (?, ?, ?, ?, ?)`,
       [
-        data.surveyId,
-        data.farmlots.ownershipType,
-        data.farmlots.cultivation || null,
-        data.farmlots.pastureland || null,
-        data.farmlots.forestland || null
+        surveyId,
+        farmlots.ownershipType,
+        farmlots.cultivation || null,
+        farmlots.pastureland || null,
+        farmlots.forestland || null
       ]
     );
   }
@@ -183,15 +428,15 @@ export const insertSurveyData = async (connection, data) => {
   } 
   
   // COMMUNITY ISSUES
-  if (data.communityIssues) {
+  if (communityIssues) {
     await connection.query(
       `INSERT INTO community_issues (
         survey_id, 
         community_issue
       ) VALUES (?, ?)`,
       [
-        data.surveyId,
-        data.communityIssues.communityIssue
+        surveyId,
+        communityIssues.communityIssue
       ]
     );
   }
@@ -206,15 +451,19 @@ export const insertSurveyData = async (connection, data) => {
     ) VALUES (?, ?, ?, ?)
     `,
     [
-      data.surveyId,
-      data.waterInformation.waterAccess === 'YES',
-      data.waterInformation.potableWater === 'YES',
-      data.waterInformation.waterSources?.join(', ') || null
+      surveyId,
+      waterInformation.waterAccess === 'YES',
+      waterInformation.potableWater === 'YES',
+      waterInformation.waterSources?.join(', ') || null
     ]
   );  
 };
 
 export const insertHouseholdData = async (connection, data) => {
+
+  const householdId = data.householdId;
+  const householdInformation = data.householdInformation;
+  const imageValues = data.imageValues;
 
   // HOUSEHOLDS
   await connection.query(`
@@ -235,24 +484,24 @@ export const insertHouseholdData = async (connection, data) => {
       family_head_suffix
     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `, [
-    data.householdId,
-    data.householdInformation?.houseStructure ?? null,
-    data.householdInformation?.houseCondition ?? null,
-    data.householdInformation?.position?.[0] ?? null,
-    data.householdInformation?.position?.[1] ?? null,
-    data.householdInformation?.houseStreet.trim() ?? null,
-    data.householdInformation?.barangay ?? null,
-    data.householdInformation?.sitioYawran ?? null,
-    data.householdInformation?.municipality ?? null,
-    data.householdInformation?.multipleFamily ?? null,
-    data.householdInformation?.familyHeadFirstName.trim() ?? null,
-    data.householdInformation?.familyHeadMiddleName.trim() ?? null,
-    data.householdInformation?.familyHeadLastName.trim() ?? null,
-    data.householdInformation?.familyHeadSuffix.trim() ?? null
+    householdId,
+    householdInformation?.houseStructure ?? null,
+    householdInformation?.houseCondition ?? null,
+    householdInformation?.position?.[0] ?? null,
+    householdInformation?.position?.[1] ?? null,
+    safeTrim(householdInformation?.houseStreet),
+    householdInformation?.barangay ?? null,
+    householdInformation?.sitioYawran ?? null,
+    householdInformation?.municipality ?? null,
+    householdInformation?.multipleFamily ?? null,
+    safeTrim(householdInformation?.familyHeadFirstName),
+    safeTrim(householdInformation?.familyHeadMiddleName),
+    safeTrim(householdInformation?.familyHeadLastName),
+    safeTrim(householdInformation?.familyHeadSuffix)
   ]);
 
   // HOUSE IMAGES
-  if (data.imageValues.length > 0) {
+  if (imageValues.length > 0) {
     await connection.query(
       `INSERT INTO house_images (
         household_id,
@@ -260,13 +509,19 @@ export const insertHouseholdData = async (connection, data) => {
         house_image_public_id,
         house_image_title
       ) VALUES ?`,
-      [data.imageValues]
+      [imageValues]
     );
   }
 };
 
 export const insertFamilyData = async (connection, data) => {
-  // FAMILY INFORMATION
+  
+  const familyId = data.familyId;
+  const householdId = data.householdId;
+  const surveyId = data.surveyId;
+  const familyInformation = data.familyInformation;
+  const serviceAvailedValues = data.serviceAvailedValues;
+
   await connection.query(
     `INSERT INTO family_information (
       family_id,
@@ -277,17 +532,17 @@ export const insertFamilyData = async (connection, data) => {
       family_income
     ) VALUES (?, ?, ?, ?, ?, ?)`, 
     [
-      data.familyId,
-      data.householdId,
-      data.surveyId,
-      parseIncome(data.familyInformation?.monthlyIncome) ?? 0,
-      parseIncome(data.familyInformation?.irregularIncome) ?? 0,
-      parseIncome(data.familyInformation?.familyIncome) ?? 0,
+      familyId,
+      householdId,
+      surveyId,
+      parseIncome(familyInformation?.monthlyIncome) ?? 0,
+      parseIncome(familyInformation?.irregularIncome) ?? 0,
+      parseIncome(familyInformation?.familyIncome) ?? 0,
     ]
   );
 
   // SERVICE / ASSISTANCE
-  if (data.serviceAvailedValues.length > 0) {
+  if (serviceAvailedValues.length > 0) {
     await connection.query(
       `INSERT INTO service_availed (
         family_id,
@@ -300,7 +555,7 @@ export const insertFamilyData = async (connection, data) => {
         female_served,
         how_service_help
       ) VALUES ?`, 
-      [data.serviceAvailedValues]
+      [serviceAvailedValues]
     );
   }
 };
@@ -429,7 +684,3 @@ export const insertPopulationData = async (connection, residentValues) => {
     );
   }
 };
-
-
-
-

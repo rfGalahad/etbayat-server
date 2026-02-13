@@ -1,5 +1,5 @@
 import pool from '../../config/db.js';
-import { getFileUrl } from '../../utils/helpers.js';
+import { getFileUrl } from '../../utils/fileUtils.js';
 
 export const getPwdIdApplicationById = async (req, res) => {
   

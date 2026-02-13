@@ -1,4 +1,4 @@
-import { formatDateForMySQL } from "../../utils/helpers.js";
+import { formatDateForMySQL } from "../../utils/dateUtils.js";
 
 const upsertPersonWithRole = async ({
   connection,

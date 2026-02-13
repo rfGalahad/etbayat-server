@@ -1,0 +1,1 @@
+export const safeTrim = str => (str || '').trim();

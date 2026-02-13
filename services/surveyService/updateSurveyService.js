@@ -1,7 +1,264 @@
-import { formatDateForMySQL, formatMonthYearForMySQL, parseIncome } from "../../utils/helpers.js";
-import { prepareServiceAvailedValues } from "../../utils/surveyDataTransformers.js";
+import pool from '../../config/db.js';
+import { 
+  formatDateForMySQL, 
+  formatMonthYearForMySQL
+} from "../../utils/dateUtils.js";
+import {
+  parseIncome
+} from '../../utils/numberUtils.js'
+import { 
+  deleteRemovedResidents, 
+  findExistingFamilyHead, 
+  generateNextFamilyId, 
+  generateResidentId, 
+  getNextResidentSequence, 
+  migrateResidentsToNewFamily, 
+  parseFamilyId, 
+  upsertPopulation 
+} from "../../helpers/surveyHelpers/surveyHelpers.js";
+import { 
+  prepareServiceAvailedValues ,
+  prepareSurveyDataValues 
+} from "../../utils/transformers/surveyDataTransformers.js";
+import { 
+  cleanupCloudinaryUploads, 
+  uploadMultipleToCloudinary, 
+  uploadToCloudinary 
+} from '../../utils/cloudinaryUtils.js';
+import { 
+  CLASSIFICATIONS 
+} from '../../constants/surveyConstants.js';
 
-// UPDATE SURVEY DATA
+
+const CLOUDINARY_PATHS = {
+  HOUSE_IMAGES: 'surveys/house-images',
+  RESPONDENT_PHOTOS: 'surveys/respondent-photos',
+  RESPONDENT_SIGNATURES: 'surveys/respondent-signatures'
+};
+
+export const updateSurveyService = async (formData, userId, files) => {
+
+  const connection = await pool.getConnection();
+
+  let houseImages = [];
+  let respondentSignature = null;
+  let respondentPhoto = null;
+  
+  const {
+    surveyId,
+    householdId,
+    familyId,
+    familyInformation,
+    familyProfile,
+    householdInformation,
+    waterInformation,
+    farmlots,
+    communityIssues,
+    serviceAvailed,
+    acknowledgement
+  } = formData;
+
+  try {
+
+    ////////////////////////////////////////////////////////////////////////////////
+
+    // CHECK IF MULTIPLE FAMILY IN ONE HOUSEHOLD
+    
+    let newHouseholdId = null;
+    let newFamilyId = null;
+    let shouldMigrateToExistingHousehold = false;
+
+    const multipleFamily = householdInformation.multipleFamily;
+    const alreadyMultipleFamily = householdInformation.alreadyMultipleFamily;
+
+    if (multipleFamily && !alreadyMultipleFamily) {
+      const familyHeadResult = await findExistingFamilyHead(connection, {
+        firstName: householdInformation.familyHeadFirstName?.trim(),
+        middleName: householdInformation.familyHeadMiddleName?.trim() || null,
+        lastName: householdInformation.familyHeadLastName?.trim(),
+        suffix: householdInformation.familyHeadSuffix?.trim() || null
+      });
+
+      if (familyHeadResult) {
+        shouldMigrateToExistingHousehold = true;
+        newHouseholdId = familyHeadResult.household_id;
+        newFamilyId = await generateNextFamilyId(connection, newHouseholdId);
+      }
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////
+
+    // DELETE IMAGES FROM CLOUDINARY AND DATABASE
+
+    const hasPublicIdToDelete = householdInformation.publicIdToDelete?.length > 0;
+    const hasImageIdToDelete = householdInformation.imageIdToDelete?.length > 0;
+
+    if (hasPublicIdToDelete && hasImageIdToDelete) {
+      await deleteMultipleFromCloudinary(
+        householdInformation.publicIdToDelete
+      );
+
+      await connection.query(`
+        DELETE FROM house_images
+        WHERE house_image_id IN (?)`, 
+        [householdInformation.imageIdToDelete]
+      );
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////
+
+    // UPLOAD IMAGES TO CLOUDINARY
+
+    if (files?.houseImages) {
+      houseImages = await uploadMultipleToCloudinary(
+        files.houseImages, 
+        CLOUDINARY_PATHS.HOUSE_IMAGES
+      );
+    }
+
+    if (files?.respondentPhoto?.[0]) {
+      if (acknowledgement?.respondentPhotoId) {
+        await cloudinary.uploader.destroy(acknowledgement.respondentPhotoId);
+      }
+      
+      respondentPhoto = await uploadToCloudinary(
+        files.respondentPhoto[0].buffer,
+        CLOUDINARY_PATHS.RESPONDENT_PHOTOS,
+        files.respondentPhoto[0].originalname
+      );
+    }
+
+    const isNewSignature = acknowledgement.respondentSignature?.startsWith('data:image/');
+    
+    if (isNewSignature) {
+      if (acknowledgement?.respondentSignaturePublicId) {
+        await cloudinary.uploader.destroy(acknowledgement.respondentSignaturePublicId);
+      }
+
+      const signatureBuffer = base64ToBuffer(acknowledgement.respondentSignature);
+      respondentSignature = await uploadToCloudinary(
+        signatureBuffer,
+        CLOUDINARY_PATHS.RESPONDENT_SIGNATURES,
+        'respondent-signature'
+      );
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////
+
+    // UPDATE SURVEY DATA
+
+    const surveyData = prepareSurveyDataValues(surveyId, formData);
+
+    await updateSurveyData(connection, {
+      surveyId,
+      familyInformation,
+      respondentPhoto,
+      respondentSignature,
+      surveyData,
+      farmlots,
+      communityIssues,
+      waterInformation
+    });
+
+    ////////////////////////////////////////////////////////////////////////////////
+
+    // MIGRATE OR UPDATE POPULATION DATA
+
+    const updatedFamilyProfile = await syncPopulation(
+      connection,
+      familyId,
+      familyProfile,
+      newFamilyId
+    ); 
+
+    await syncSocialClassifications(connection, updatedFamilyProfile, CLASSIFICATIONS);
+    await syncProfessionalInformation(connection, updatedFamilyProfile);
+    await syncContactInformation(connection, updatedFamilyProfile);
+    await syncHealthInformation(connection, updatedFamilyProfile);
+    await syncGovernmentId(connection, updatedFamilyProfile);
+    await syncAffiliatedMember(connection, updatedFamilyProfile);
+    await syncNonIvatanMember(connection, updatedFamilyProfile);
+
+    ////////////////////////////////////////////////////////////////////////////////
+
+    // MIGRATE OR UPDATE FAMILY INFORMATION
+
+    if (shouldMigrateToExistingHousehold) {
+      await migrateFamilyToNewHousehold(connection, {
+        oldFamilyId: familyId,
+        newFamilyId,
+        newHouseholdId,
+        surveyId,
+        familyInformation,
+        serviceAvailed
+      });
+    } else {
+      await updateFamilyInformation(connection, {
+        familyId,
+        familyInformation,
+        serviceAvailed
+      });
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////
+
+    // HOUSEHOLD DATA
+
+    if (shouldMigrateToExistingHousehold) {
+      // Ensure target household exists and is up-to-date
+      await upsertHouseholdData(connection, {
+        householdId: newHouseholdId,
+        householdInformation,
+        houseImages
+      });
+
+      // Clean up old household if no longer in use
+      await cleanupOldHousehold(connection, householdId);
+    } else {
+      // Regular household update
+      const imageValues = houseImages.map((img, index) => [ 
+        householdId, 
+        img.url, 
+        img.publicId, 
+        householdInformation.houseImageTitles[index] 
+      ]);
+
+      await updateHouseholdData(connection, {
+        householdId,
+        householdInformation,
+        imageValues
+      });
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////
+
+    console.log('SURVEY ID', surveyId)
+    await connection.commit();
+    return surveyId;
+    
+  } catch (error) {
+
+    await connection.rollback();
+
+    console.error('❌ Updating survey failed:', {
+      error: error.message,
+      surveyId,
+      userId,
+      timestamp: new Date().toISOString()
+    });
+
+    await cleanupCloudinaryUploads({
+      houseImages,
+      respondentPhoto,
+      respondentSignature
+    });
+  } finally {
+    connection.release();
+  }
+}
+
+// =================================================================================
+// UPDATE SURVEY DATA 
 
 const upsertExpensesData = async (connection, tableName, expenseValues) => {
   if (!expenseValues || expenseValues.length === 0) return;
@@ -237,11 +494,8 @@ export const updateSurveyData = async (connection, data) => {
   
 };
 
-
-///////////////////////////////////////////////////////////////////
-
-
-// UPDATE HOUSEHOLD DATA
+// =================================================================================
+// UPDATE HOUSEHOLD DATA 
 
 export const updateHouseholdData = async (connection, data) => {
   
@@ -371,10 +625,8 @@ export const cleanupOldHousehold = async (connection, householdId) => {
   } 
 }
 
-
-///////////////////////////////////////////////////////////////////
-
-// UPDATE FAMILY DATA
+// =================================================================================
+// UPDATE FAMILY DATA 
 
 const syncServiceAvailed = async (
   connection, 
@@ -546,10 +798,64 @@ export const migrateFamilyToNewHousehold = async (connection, data) => {
   `, [oldFamilyId]);
 }
 
-
-///////////////////////////////////////////////////////////////////
-
+// =================================================================================
 // UPDATE POPULATION / RESIDENT
+
+export const syncResidentTable = async (
+  connection,
+  tableName,
+  familyProfile,
+  {
+    primaryKey = 'resident_id',
+    checkHasData,
+    mapToValues,
+    columns,
+    updateColumns
+  }
+) => {
+  await connection.beginTransaction();
+
+  try {
+    const withData = [];
+    const withoutData = [];
+
+    for (const r of familyProfile) {
+      if (checkHasData(r)) {
+        withData.push(r);
+      } else {
+        withoutData.push(r.residentId);
+      }
+    }
+
+    // DELETE cleared rows
+    if (withoutData.length > 0) {
+      await connection.query(
+        `DELETE FROM ${tableName} WHERE ${primaryKey} IN (?)`,
+        [withoutData]
+      );
+    }
+
+    // UPSERT data
+    if (withData.length > 0) {
+      const values = withData.map(mapToValues);
+      const updateClause = updateColumns
+        .map(col => `${col} = VALUES(${col})`)
+        .join(', ');
+
+      await connection.query(
+        `INSERT INTO ${tableName} (${columns.join(', ')})
+         VALUES ?
+         ON DUPLICATE KEY UPDATE ${updateClause}`,
+        [values]
+      );
+    }
+
+    await connection.commit();
+  } catch (err) {
+    await connection.rollback();
+    throw err;
+  }
+};
 
 export const syncPopulation = async (
   connection,
@@ -557,205 +863,48 @@ export const syncPopulation = async (
   familyProfile,
   newFamilyId = null
 ) => {
-
   try {
     const targetFamilyId = newFamilyId || familyId;
-    
-    // Extract base for resident IDs from family ID
-    // FID-0126-0001-A → RID-0126-0001-A
-    const familyParts = targetFamilyId.split('-');
-    const barangayCode = familyParts[1]; // 0126
-    const householdNumber = familyParts[2]; // 0001
-    const familyLetter = familyParts[3]; // A
-    const residentBaseId = `RID-${barangayCode}-${householdNumber}-${familyLetter}`;
+    const { residentBaseId } = parseFamilyId(targetFamilyId);
 
-    /** 1️⃣ Collect resident IDs sent by client */
+    if (newFamilyId && newFamilyId !== familyId) {
+      familyProfile = await migrateResidentsToNewFamily(
+        connection,
+        familyId,
+        newFamilyId,
+        familyProfile,
+        residentBaseId
+      );
+    }
+
     const existingResidentIds = familyProfile
       .filter(r => r.residentId)
       .map(r => r.residentId);
 
-    /** 🔹 IF newFamilyId exists, migrate residents to new family with new IDs */
-    if (newFamilyId && newFamilyId !== familyId && existingResidentIds.length > 0) {
-      // Temporarily disable foreign key checks for ID updates
-      await connection.query('SET FOREIGN_KEY_CHECKS = 0');
-
-      // Update all residents and their related records
-      for (let i = 0; i < existingResidentIds.length; i++) {
-        const oldResidentId = existingResidentIds[i];
-        
-        // Extract sequence number from old resident ID
-        // RID-0126-0003-A-1 → 1
-        const oldParts = oldResidentId.split('-');
-        const sequence = oldParts[oldParts.length - 1];
-        
-        // Generate new resident ID with correct format
-        // RID-0126-0001-B-1 (includes household number and family letter)
-        const newResidentId = `${residentBaseId}-${sequence}`;
-
-        // Update all related tables in dependency order
-        await connection.query(
-          `UPDATE social_classification SET resident_id = ? WHERE resident_id = ?`,
-          [newResidentId, oldResidentId]
-        );
-
-        await connection.query(
-          `UPDATE professional_information SET resident_id = ? WHERE resident_id = ?`,
-          [newResidentId, oldResidentId]
-        );
-
-        await connection.query(
-          `UPDATE contact_information SET resident_id = ? WHERE resident_id = ?`,
-          [newResidentId, oldResidentId]
-        );
-
-        await connection.query(
-          `UPDATE health_information SET resident_id = ? WHERE resident_id = ?`,
-          [newResidentId, oldResidentId]
-        );
-
-        await connection.query(
-          `UPDATE government_ids SET resident_id = ? WHERE resident_id = ?`,
-          [newResidentId, oldResidentId]
-        );
-
-        await connection.query(
-          `UPDATE affiliation SET resident_id = ? WHERE resident_id = ?`,
-          [newResidentId, oldResidentId]
-        );
-
-        await connection.query(
-          `UPDATE non_ivatan SET resident_id = ? WHERE resident_id = ?`,
-          [newResidentId, oldResidentId]
-        );
-
-        // Finally update population table
-        await connection.query(
-          `UPDATE population 
-           SET family_id = ?, resident_id = ?
-           WHERE resident_id = ? AND family_id = ?`,
-          [targetFamilyId, newResidentId, oldResidentId, familyId]
-        );
-
-        // Update the ID in the array for later use
-        existingResidentIds[i] = newResidentId;
-      }
-
-      // Re-enable foreign key checks
-      await connection.query('SET FOREIGN_KEY_CHECKS = 1');
-
-      // Update familyProfile with new resident IDs
-      familyProfile = familyProfile.map(r => {
-        if (r.residentId) {
-          const oldParts = r.residentId.split('-');
-          const sequence = oldParts[oldParts.length - 1];
-          return {
-            ...r,
-            residentId: `${residentBaseId}-${sequence}`
-          };
-        }
-        return r;
-      });
-    }
-
-    /** 2️⃣ DELETE removed residents */
-    if (existingResidentIds.length > 0) {
-      await connection.query(
-        `DELETE FROM population
-         WHERE family_id = ?
-           AND resident_id NOT IN (?)`,
-        [targetFamilyId, existingResidentIds]
-      );
-    } else {
-      await connection.query(
-        `DELETE FROM population WHERE family_id = ?`,
-        [targetFamilyId]
-      );
-    }
-
-    /** 3️⃣ Determine next resident number for new members */
-    const [rows] = await connection.query(
-      `SELECT MAX(
-          CAST(SUBSTRING_INDEX(resident_id, '-', -1) AS UNSIGNED)
-        ) AS maxNum
-       FROM population
-       WHERE family_id = ?`,
-      [targetFamilyId]
-    );
-
-    let nextNum = (rows[0]?.maxNum || 0) + 1;
-
-    /** 4️⃣ Generate resident IDs for new members */
-    const updatedFamilyProfile = familyProfile.map(r => {
-      let residentId = r.residentId;
-
-      if (!residentId) {
-        residentId = `${residentBaseId}-${nextNum}`;
-        nextNum++;
-      }
-
-      return {
-        ...r,
-        residentId
-      };
-    });
-
-    /** 5️⃣ Prepare values for upsert */
-    const values = updatedFamilyProfile.map(r => [
-      r.residentId,
+    await deleteRemovedResidents(
+      connection,
       targetFamilyId,
-      r.firstName.trim(),
-      (r.middleName || null).trim(),
-      r.lastName.trim(),
-      r.suffix || null,
-      r.sex,
-      formatDateForMySQL(r.birthdate),
-      r.verifiedBirthdate,
-      r.specifyId,
-      r.civilStatus,
-      r.religion,
-      r.relationToFamilyHead,
-      r.otherRelationship || null,
-      r.birthplace
-    ]);
-
-    /** 6️⃣ UPSERT population records */
-    await connection.query(
-      `INSERT INTO population (
-        resident_id,
-        family_id,
-        first_name,
-        middle_name,
-        last_name,
-        suffix,
-        sex,
-        birthdate,
-        verified_birthdate,
-        specify_id,
-        civil_status,
-        religion,
-        relation_to_family_head,
-        other_relationship,
-        birthplace
-      )
-      VALUES ?
-      ON DUPLICATE KEY UPDATE
-        first_name = VALUES(first_name),
-        middle_name = VALUES(middle_name),
-        last_name = VALUES(last_name),
-        suffix = VALUES(suffix),
-        sex = VALUES(sex),
-        birthdate = VALUES(birthdate),
-        verified_birthdate = VALUES(verified_birthdate),
-        specify_id = VALUES(specify_id),
-        civil_status = VALUES(civil_status),
-        religion = VALUES(religion),
-        relation_to_family_head = VALUES(relation_to_family_head),
-        other_relationship = VALUES(other_relationship),
-        birthplace = VALUES(birthplace)
-      `,
-      [values]
+      existingResidentIds
     );
-    return updatedFamilyProfile;
+
+    let nextSeq = await getNextResidentSequence(
+      connection,
+      targetFamilyId
+    );
+
+    familyProfile = familyProfile.map(r =>
+      r.residentId
+        ? r
+        : { ...r, residentId: generateResidentId(residentBaseId, nextSeq++) }
+    );
+
+    await upsertPopulation(
+      connection,
+      targetFamilyId,
+      familyProfile
+    );
+
+    return familyProfile;
 
   } catch (err) {
     console.error('❌ ERROR IN SYNC POPULATION:', err);
@@ -839,440 +988,181 @@ export const syncSocialClassifications = async (
 };
 
 export const syncProfessionalInformation = async (
-  connection,
+  connection, 
   familyProfile
 ) => {
-  await connection.beginTransaction();
-
-  try {
-    /** 1️⃣ Split payload */
-    const withProfessional = [];
-    const withoutProfessional = [];
-
-    for (const r of familyProfile) {
-      const hasProfessionalData =
-        r.educationalAttainment ||
-        r.skills ||
-        r.occupation ||
-        r.company ||
-        r.employmentStatus ||
-        r.employmentCategory ||
-        r.employmentType ||
-        r.monthlyIncome ||
-        r.annualIncome ||
-        r.receivingPension ||
-        r.pensionType || 
-        r.otherPensionType ||
-        r.pensionIncome;
-
-      if (hasProfessionalData) {
-        withProfessional.push(r);
-      } else {
-        withoutProfessional.push(r.residentId);
-      }
-    }
-
-    /** 2️⃣ DELETE professional rows that were cleared */
-    if (withoutProfessional.length > 0) {
-      await connection.query(
-        `
-        DELETE FROM professional_information
-        WHERE resident_id IN (?)
-        `,
-        [withoutProfessional]
-      );
-    }
-
-    /** 3️⃣ UPSERT professional info */
-    if (withProfessional.length > 0) {
-      const values = withProfessional.map(r => [
-        r.residentId,
-        r.educationalAttainment || null,
-        r.skills || null,
-        r.occupation || null,
-        r.company || null,
-        r.employmentStatus || null,
-        r.employmentCategory || null,
-        r.employmentType || null,
-        parseIncome(r.monthlyIncome),
-        parseIncome(r.annualIncome),
-        r.receivingPension,
-        r.pensionType,
-        r.otherPensionType || null,
-        parseIncome(r.pensionIncome)
-      ]);
-
-      await connection.query(
-        `
-        INSERT INTO professional_information (
-          resident_id,
-          educational_attainment,
-          skills,
-          occupation,
-          company,
-          employment_status,
-          employment_category,
-          employment_type,
-          monthly_income,
-          annual_income,
-          receiving_pension,
-          pension_type,
-          other_pension_type,
-          pension_income
-        )
-        VALUES ?
-        ON DUPLICATE KEY UPDATE
-          educational_attainment = VALUES(educational_attainment),
-          skills = VALUES(skills),
-          occupation = VALUES(occupation),
-          company = VALUES(company),
-          employment_status = VALUES(employment_status),
-          employment_category = VALUES(employment_category),
-          employment_type = VALUES(employment_type),
-          monthly_income = VALUES(monthly_income),
-          annual_income = VALUES(annual_income),
-          receiving_pension = VALUES(receiving_pension),
-          pension_type = VALUES(pension_type),
-          other_pension_type = VALUES(other_pension_type),
-          pension_income = VALUES(pension_income)
-        `,
-        [values]
-      );
-    }
-
-    await connection.commit();
-  } catch (err) {
-    await connection.rollback();
-    throw err;
-  }
+  return syncResidentTable(connection, 'professional_information', familyProfile, {
+    checkHasData: (r) => 
+      r.educationalAttainment || 
+      r.skills || 
+      r.occupation || 
+      r.company || 
+      r.employmentStatus || 
+      r.monthlyIncome,
+    mapToValues: (r) => [
+      r.residentId,
+      r.educationalAttainment || null,
+      r.skills || null,
+      r.occupation || null,
+      r.company || null,
+      r.employmentStatus || null,
+      r.employmentCategory || null,
+      r.employmentType || null,
+      parseIncome(r.monthlyIncome),
+      parseIncome(r.annualIncome),
+      r.receivingPension,
+      r.pensionType,
+      r.otherPensionType || null,
+      parseIncome(r.pensionIncome)
+    ],
+    columns: [
+      'resident_id', 'educational_attainment', 'skills', 'occupation',
+      'company', 'employment_status', 'employment_category', 'employment_type',
+      'monthly_income', 'annual_income', 'receiving_pension', 'pension_type',
+      'other_pension_type', 'pension_income'
+    ],
+    updateColumns: [
+      'educational_attainment', 'skills', 'occupation', 'company',
+      'employment_status', 'employment_category', 'employment_type',
+      'monthly_income', 'annual_income', 'receiving_pension', 'pension_type',
+      'other_pension_type', 'pension_income'
+    ]
+  });
 };
 
 export const syncContactInformation = async (
-  connection,
+  connection, 
   familyProfile
 ) => {
-  await connection.beginTransaction();
-
-  try {
-    /** 1️⃣ Split payload */
-    const withContact = [];
-    const withoutContact = [];
-
-    for (const r of familyProfile) {
-      const hasContactData = r.contactNumber;
-
-      if (hasContactData) {
-        withContact.push(r);
-      } else {
-        withoutContact.push(r.residentId);
-      }
-    }
-
-    /** 2️⃣ DELETE contact rows that were cleared */
-    if (withoutContact.length > 0) {
-      await connection.query(
-        `
-        DELETE FROM contact_information
-        WHERE resident_id IN (?)
-        `,
-        [withoutContact]
-      );
-    }
-
-    /** 3️⃣ UPSERT contact info */
-    if (withContact.length > 0) {
-      const values = withContact.map(r => [
-        r.residentId,
-        r.contactNumber || null
-      ]);
-
-      await connection.query(
-        `
-        INSERT INTO contact_information (
-          resident_id,
-          contact_number
-        )
-        VALUES ?
-        ON DUPLICATE KEY UPDATE
-          contact_number = VALUES(contact_number)
-        `,
-        [values]
-      );
-    }
-
-    await connection.commit();
-  } catch (err) {
-    await connection.rollback();
-    throw err;
-  }
+  return syncResidentTable(connection, 'contact_information', familyProfile, {
+    checkHasData: (r) => r.contactNumber,
+    mapToValues: (r) => [r.residentId, r.contactNumber || null],
+    columns: ['resident_id', 'contact_number'],
+    updateColumns: ['contact_number']
+  });
 };
 
 export const syncHealthInformation = async (
-  connection,
+  connection, 
   familyProfile
 ) => {
-  await connection.beginTransaction();
-
-  try {
-    /** 1️⃣ Split payload */
-    const withHealth = [];
-    const withoutHealth = [];
-
-    for (const r of familyProfile) {
-      const hasHealthData = r.healthStatus;
-
-      if (hasHealthData) {
-        withHealth.push(r);
-      } else {
-        withoutHealth.push(r.residentId);
-      }
-    }
-
-    /** 2️⃣ DELETE health rows that were cleared */
-    if (withoutHealth.length > 0) {
-      await connection.query(
-        `
-        DELETE FROM health_information
-        WHERE resident_id IN (?)
-        `,
-        [withoutHealth]
-      );
-    }
-
-    /** 3️⃣ UPSERT health info */
-    if (withHealth.length > 0) {
-      const values = withHealth.map(r => [
-        r.residentId,
-        r.healthStatus || null
-      ]);
-
-      await connection.query(
-        `
-        INSERT INTO health_information (
-          resident_id,
-          health_status
-        )
-        VALUES ?
-        ON DUPLICATE KEY UPDATE
-          health_status = VALUES(health_status)
-        `,
-        [values]
-      );
-    }
-
-    await connection.commit();
-  } catch (err) {
-    await connection.rollback();
-    throw err;
-  }
+  return syncResidentTable(connection, 'health_information', familyProfile, {
+    checkHasData: (r) => r.healthStatus,
+    mapToValues: (r) => [r.residentId, r.healthStatus || null],
+    columns: ['resident_id', 'health_status'],
+    updateColumns: ['health_status']
+  });
 };
 
 export const syncGovernmentId = async (
   connection,
   familyProfile
 ) => {
-  await connection.beginTransaction();
+  return syncResidentTable(connection, 'government_ids', familyProfile, {
+    primaryKey: 'resident_id',
 
-  try {
-    /** 1️⃣ Split payload */
-    const withGovernmentId = [];
-    const withoutGovernmentId = [];
+    checkHasData: (r) => {
+      return !!r.philhealthNumber;
+    },
 
-    for (const r of familyProfile) {
-      const hasGovernmentData = r.philhealthNumber;
+    mapToValues: (r) => [
+      r.residentId,
+      r.philhealthNumber || null
+    ],
 
-      if (hasGovernmentData) {
-        withGovernmentId.push(r);
-      } else {
-        withoutGovernmentId.push(r.residentId);
-      }
-    }
+    columns: [
+      'resident_id',
+      'philhealth'
+    ],
 
-    /** 2️⃣ DELETE health rows that were cleared */
-    if (withoutGovernmentId.length > 0) {
-      await connection.query(
-        `
-        DELETE FROM government_ids
-        WHERE resident_id IN (?)
-        `,
-        [withoutGovernmentId]
-      );
-    }
-
-    /** 3️⃣ UPSERT health info */
-    if (withGovernmentId.length > 0) {
-      const values = withGovernmentId.map(r => [
-        r.residentId,
-        r.philhealthNumber || null
-      ]);
-
-      await connection.query(
-        `
-        INSERT INTO government_ids (
-          resident_id,
-          philhealth
-        )
-        VALUES ?
-        ON DUPLICATE KEY UPDATE
-          philhealth = VALUES(philhealth)
-        `,
-        [values]
-      );
-    }
-
-    await connection.commit();
-  } catch (err) {
-    await connection.rollback();
-    throw err;
-  }
+    updateColumns: [
+      'philhealth'
+    ]
+  });
 };
 
 export const syncAffiliatedMember = async (
   connection,
   familyProfile
 ) => {
-  await connection.beginTransaction();
+  return syncResidentTable(connection, 'affiliation', familyProfile, {
+    primaryKey: 'resident_id',
 
-  try {
-    /** 1️⃣ Split payload */
-    const withAffiliation = [];
-    const withoutAffiliation = [];
-
-    for (const r of familyProfile) {
-      const hasAffiliationData =
+    checkHasData: (r) => {
+      return (
         r.dateBecomeOfficer ||
         r.dateBecomeMember ||
-        r.organizationName;
-
-      if (hasAffiliationData) {
-        withAffiliation.push(r);
-      } else {
-        withoutAffiliation.push(r.residentId);
-      }
-    }
-
-    /** 2️⃣ DELETE professional rows that were cleared */
-    if (withoutAffiliation.length > 0) {
-      await connection.query(
-        `
-        DELETE FROM affiliation
-        WHERE resident_id IN (?)
-        `,
-        [withoutAffiliation]
+        r.organizationName
       );
-    }
+    },
 
-    /** 3️⃣ UPSERT professional info */
-    if (withAffiliation.length > 0) {
-      const values = withAffiliation.map(r => [
-        r.residentId,
-        formatDateForMySQL(r.dateBecomeOfficer) || null,
-        formatDateForMySQL(r.dateBecomeMember) || null,
-        r.organizationName || null
-      ]);
+    mapToValues: (r) => [
+      r.residentId,
+      formatDateForMySQL(r.dateBecomeOfficer) || null,
+      formatDateForMySQL(r.dateBecomeMember) || null,
+      r.organizationName || null
+    ],
 
-      await connection.query(
-        `
-        INSERT INTO affiliation (
-          resident_id,
-          date_become_officer,
-          date_become_member,
-          organization_name
-        )
-        VALUES ?
-        ON DUPLICATE KEY UPDATE
-          date_become_officer = VALUES(date_become_officer),
-          date_become_member = VALUES(date_become_member),
-          organization_name = VALUES(organization_name)
-        `,
-        [values]
-      );
-    }
+    columns: [
+      'resident_id',
+      'date_become_officer',
+      'date_become_member',
+      'organization_name'
+    ],
 
-    await connection.commit();
-  } catch (err) {
-    await connection.rollback();
-    throw err;
-  }
+    updateColumns: [
+      'date_become_officer',
+      'date_become_member',
+      'organization_name'
+    ]
+  });
 };
 
 export const syncNonIvatanMember = async (
   connection,
   familyProfile
 ) => {
-  await connection.beginTransaction();
+  return syncResidentTable(connection, 'non_ivatan', familyProfile, {
+    primaryKey: 'resident_id',
 
-  try {
-    /** 1️⃣ Split payload */
-    const withNonIvatan = [];
-    const withoutNonIvatan = [];
-
-    for (const r of familyProfile) {
-      const hasNonIvatanData =
+    checkHasData: (r) => {
+      return (
         r.settlementDetails ||
         r.ethnicity ||
         r.placeOfOrigin ||
         r.transient ||
         r.houseOwner ||
-        r.dateRegistered;
-
-      if (hasNonIvatanData) {
-        withNonIvatan.push(r);
-      } else {
-        withoutNonIvatan.push(r.residentId);
-      }
-    }
-
-    /** 2️⃣ DELETE non-ivatan rows that were cleared */
-    if (withoutNonIvatan.length > 0) {
-      await connection.query(
-        `
-        DELETE FROM non_ivatan
-        WHERE resident_id IN (?)
-        `,
-        [withoutNonIvatan]
+        r.dateRegistered
       );
-    }
+    },
 
-    /** 3️⃣ UPSERT non-ivatan info */
-    if (withNonIvatan.length > 0) {
-      const values = withNonIvatan.map(r => [
-        r.residentId,
-        r.settlementDetails || null,
-        r.ethnicity || null,
-        r.placeOfOrigin || null,
-        r.transient || null,
-        r.houseOwner || null,
-        formatDateForMySQL(r.dateRegistered) || null
-      ]);
+    mapToValues: (r) => [
+      r.residentId,
+      r.settlementDetails || null,
+      r.ethnicity || null,
+      r.placeOfOrigin || null,
+      r.transient || null,
+      r.houseOwner || null,
+      formatDateForMySQL(r.dateRegistered) || null
+    ],
 
-      await connection.query(
-        `
-        INSERT INTO non_ivatan (
-          resident_id,
-          settlement_details,
-          ethnicity,
-          place_of_origin,
-          transient,
-          house_owner,
-          date_registered
-        )
-        VALUES ?
-        ON DUPLICATE KEY UPDATE
-          settlement_details = VALUES(settlement_details),
-          ethnicity = VALUES(ethnicity),
-          place_of_origin = VALUES(place_of_origin),
-          transient = VALUES(transient),
-          house_owner = VALUES(house_owner),
-          date_registered = VALUES(date_registered)
-        `,
-        [values]
-      );
-    }
+    columns: [
+      'resident_id',
+      'settlement_details',
+      'ethnicity',
+      'place_of_origin',
+      'transient',
+      'house_owner',
+      'date_registered'
+    ],
 
-    await connection.commit();
-  } catch (err) {
-    await connection.rollback();
-    throw err;
-  }
+    updateColumns: [
+      'settlement_details',
+      'ethnicity',
+      'place_of_origin',
+      'transient',
+      'house_owner',
+      'date_registered'
+    ]
+  });
 };

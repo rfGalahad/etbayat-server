@@ -1,4 +1,9 @@
-import { formatDateForMySQL, parseIncome } from "../../utils/helpers.js";
+import {
+  parseIncome
+} from '../../utils/numberUtils.js';
+import { 
+  formatDateForMySQL 
+} from "../../utils/dateUtils.js";
 
 export const updateApplicantInformationData = async (connection, data) => { 
   if (!data.residentId) return;

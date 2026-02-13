@@ -1,25 +1,5 @@
 import fs from 'fs/promises';
 import path from 'path';
-import { deleteMultipleFromCloudinary } from './cloudinaryUpload.js';
-
-export const parseIncome = (value) => {
-  if (!value) return 0;
-  const parsed = parseFloat(value.toString().replace(/,/g, '').trim());
-  return isNaN(parsed) ? 0 : parsed;
-};
-
-export const formatDateForMySQL = (dateStr) => {
-  if (!dateStr) return null;
-  const [month, day, year] = dateStr.split('-');
-  return `${year}-${month}-${day}`;
-};
-
-export const formatMonthYearForMySQL = (monthYearStr) => {
-  if (!monthYearStr) return null;
-  const [month, year] = monthYearStr.split('-');
-  return `${year}-${month}-01`;
-};
-
 
 export const base64ToBuffer = (base64) => {
   const matches = base64.match(/^data:(.+);base64,(.+)$/);
@@ -29,24 +9,8 @@ export const base64ToBuffer = (base64) => {
   }
 
   return Buffer.from(matches[2], 'base64');
-}
+};
 
-
-export const getNextFamilyId = (latestFamilyId, baseId) => {
-  
-  if (!latestFamilyId) {
-    return `FID-${baseId}-A`;
-  }
-
-  const parts = latestFamilyId.split('-');
-  const suffix = parts.pop(); // A, B, C...
-  const nextSuffix = String.fromCharCode(suffix.charCodeAt(0) + 1);
-
-  return [...parts, nextSuffix].join('-');
-}
-
-
-// Helper function to save file to local storage
 export const saveToLocal = async (buffer, folder, filename) => {
   try {
     // Define upload directory (adjust path as needed)
@@ -79,40 +43,11 @@ export const saveToLocal = async (buffer, folder, filename) => {
   }
 };
 
-// Helper function to delete file from local storage
 export const deleteFromLocal = async (filePath) => {
   return fs.unlink(filePath).catch(err => {
     console.error(`Error deleting file ${filePath}:`, err);
   });
 };
-
-
-export const cleanupCloudinaryUploads = async ({ 
-  houseImages, 
-  respondentPhoto, 
-  respondentSignature 
-}) => {
-  try {
-    const publicIdsToDelete = [];
-
-    if (houseImages?.length > 0) {
-      publicIdsToDelete.push(...houseImages.map(img => img.publicId));
-    }
-    if (respondentPhoto?.publicId) {
-      publicIdsToDelete.push(respondentPhoto.publicId);
-    }
-    if (respondentSignature?.publicId) {
-      publicIdsToDelete.push(respondentSignature.publicId);
-    }
-
-    if (publicIdsToDelete.length > 0) {
-      await deleteMultipleFromCloudinary(publicIdsToDelete);
-      console.log(`🧹 Cleaned up ${publicIdsToDelete.length} images from Cloudinary`);
-    }
-  } catch (error) {
-    console.error('Error cleaning up Cloudinary uploads:', error);
-  }
-}
 
 export const cleanupLocalStorageUploads = async ({ 
   photoId, 
@@ -138,9 +73,8 @@ export const cleanupLocalStorageUploads = async ({
   } catch (error) {
     console.error('Error cleaning up local uploads:', error);
   }
-}
+};
 
-// utils/fileHelpers.js
 export const getFileUrl = (filePath, req) => {
   if (!filePath) return null;
   const baseUrl = process.env.BASE_URL || `${req.protocol}://${req.get('host')}`;
@@ -153,4 +87,3 @@ export const getFileUrls = (files, req) => {
     return acc;
   }, {});
 };
-

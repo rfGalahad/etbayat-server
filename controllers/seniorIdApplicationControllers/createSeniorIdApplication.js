@@ -6,8 +6,10 @@ import {
 import { 
   deleteMultipleFromCloudinary,
   uploadToCloudinary 
-} from '../../utils/cloudinaryUpload.js';
-import { base64ToBuffer } from '../../utils/helpers.js';
+} from '../../utils/cloudinaryUtils.js';
+import { 
+  base64ToBuffer 
+} from '../../utils/fileUtils.js';
 import { 
   insertApplicantInformationData, 
   insertSeniorIdApplicationData, 
