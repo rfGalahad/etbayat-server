@@ -6,7 +6,7 @@ export const createSurvey = async (req, res, next) => {
     const userId = req.user.userId;
     const files = req.files || {};
     
-    const result = await createSurveyService(
+    const surveyId = await createSurveyService(
       formData, 
       userId, 
       files
@@ -15,7 +15,7 @@ export const createSurvey = async (req, res, next) => {
     return res.status(201).json({ 
       success: true,
       message: 'Survey created successfully',
-      surveyId: result.surveyId
+      surveyId: surveyId
     });
   } catch (error) {
     next(error);

@@ -22,6 +22,9 @@ import {
 import {
   base64ToBuffer
 } from '../../utils/fileUtils.js';
+import {
+  getNextFamilyId
+} from '../../helpers/surveyHelpers/surveyHelpers.js'
 
 
 const ID_PREFIXES = {
@@ -56,6 +59,9 @@ export const createSurveyService = async (formData, userId, files) => {
     acknowledgement
   } = formData
 
+  const surveyId = `${ID_PREFIXES.SURVEY}${await generateSurveyId(connection)}`;
+  console.log('SURVEY ID', surveyId)
+
   try {
 
     await connection.beginTransaction();
@@ -64,7 +70,7 @@ export const createSurveyService = async (formData, userId, files) => {
 
     // GENERATE IDs
 
-    const surveyId = `${ID_PREFIXES.SURVEY}${await generateSurveyId(connection)}`;
+    
     const tempHouseholdId = await generateHouseholdId(connection);
     let householdId = `${ID_PREFIXES.HOUSEHOLD}${tempHouseholdId}`;
     let familyId;
@@ -222,12 +228,6 @@ export const createSurveyService = async (formData, userId, files) => {
       houseImages,
       respondentPhoto,
       respondentSignature
-    });
-
-    throw new SurveyCreationError('Failed to create survey', {
-      cause: error,
-      surveyId,
-      userId
     });
   } finally {
     connection.release();

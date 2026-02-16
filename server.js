@@ -39,6 +39,9 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // ROUTES
+
+app.use('/uploads', express.static('uploads'));
+
 app.use('/api/auth', authRoutes);
 app.use('/api/activityLog', activityLogRoutes);
 app.use('/api/posts', postRoutes);

@@ -78,7 +78,7 @@ export const cleanupLocalStorageUploads = async ({
 export const getFileUrl = (filePath, req) => {
   if (!filePath) return null;
   const baseUrl = process.env.BASE_URL || `${req.protocol}://${req.get('host')}`;
-  return `${baseUrl}/uploads/${filePath}`;
+  return `${baseUrl}${filePath}`;
 };
 
 export const getFileUrls = (files, req) => {

@@ -32,7 +32,8 @@ export const getPwdIdApplicationById = async (req, res) => {
       [accomplishedByRows],
       [certifiedPhysicianRows],
       [otherInforamtionRows],
-      [pwdMediaRows]
+      [pwdMediaRows],
+      [mayorInformationRows]
     ] = await Promise.all([
 
       // PERSONAL INFORMATION
@@ -243,6 +244,15 @@ export const getPwdIdApplicationById = async (req, res) => {
         FROM pwd_id_applications
         WHERE resident_id = ?`,
         [residentId]
+      ),
+
+      // MAYOR INFO 
+      connection.query(`
+        SELECT
+          mayor_name as mayorName,
+          mayor_signature as mayorSignature
+        FROM mayor_information`,
+        [residentId]
       )
     ]);
 
@@ -260,8 +270,12 @@ export const getPwdIdApplicationById = async (req, res) => {
     const certifiedPhysician = certifiedPhysicianRows[0] || {};
     const otherInformation = otherInforamtionRows[0] || {};
     const pwdMedia = {
-      pwdPhotoIdPreview: getFileUrl(pwdMediaRows[0]?.pwd_photo_id_url, req),
-      pwdSignature: getFileUrl(pwdMediaRows[0]?.pwd_signature_url, req)
+      pwdPhotoIdPreview: getFileUrl(pwdMediaRows[0]?.pwdPhotoIdPreview, req),
+      pwdSignature: getFileUrl(pwdMediaRows[0]?.pwdSignature, req)
+    }
+    const mayorInformation = {
+      mayorName: mayorInformationRows[0]?.mayorName,
+      mayorSignature: getFileUrl(mayorInformationRows[0]?.mayorSignature, req)
     }
 
     /* =======================
@@ -281,7 +295,8 @@ export const getPwdIdApplicationById = async (req, res) => {
         accomplishedBy,
         certifiedPhysician,
         otherInformation,
-        pwdMedia
+        pwdMedia,
+        mayorInformation
       }
     });
   } catch (error) {
