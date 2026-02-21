@@ -60,7 +60,6 @@ export const createSurveyService = async (formData, userId, files) => {
   } = formData
 
   const surveyId = `${ID_PREFIXES.SURVEY}${await generateSurveyId(connection)}`;
-  console.log('SURVEY ID', surveyId)
 
   try {
 
@@ -70,7 +69,6 @@ export const createSurveyService = async (formData, userId, files) => {
 
     // GENERATE IDs
 
-    
     const tempHouseholdId = await generateHouseholdId(connection);
     let householdId = `${ID_PREFIXES.HOUSEHOLD}${tempHouseholdId}`;
     let familyId;
@@ -217,6 +215,12 @@ export const createSurveyService = async (formData, userId, files) => {
   } catch (error) {
     await connection.rollback();
 
+    await cleanupCloudinaryUploads({
+      houseImages,
+      respondentPhoto,
+      respondentSignature
+    });
+
     console.error('❌ Survey creation failed:', {
       error: error.message,
       surveyId,
@@ -224,11 +228,7 @@ export const createSurveyService = async (formData, userId, files) => {
       timestamp: new Date().toISOString()
     });
 
-    await cleanupCloudinaryUploads({
-      houseImages,
-      respondentPhoto,
-      respondentSignature
-    });
+    throw error;
   } finally {
     connection.release();
   }

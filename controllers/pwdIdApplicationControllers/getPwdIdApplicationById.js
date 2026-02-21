@@ -64,7 +64,8 @@ export const getPwdIdApplicationById = async (req, res) => {
           employment_type as employmentType,
           employment_category as employmentCategory,
           skills,
-          occupation
+          occupation,
+          other_occupation AS otherOccupation
         FROM professional_information
         WHERE resident_id = ?`,
         [residentId]
@@ -100,7 +101,7 @@ export const getPwdIdApplicationById = async (req, res) => {
           sss as sssNumber,
           gsis as gsisNumber,
           psn as psnNumber,
-          philhealth as philheathNumber,
+          philhealth as philhealthNumber,
           pagibig as pagibigNumber
         FROM government_ids
         WHERE resident_id = ?`,
@@ -246,12 +247,12 @@ export const getPwdIdApplicationById = async (req, res) => {
         [residentId]
       ),
 
-      // MAYOR INFO 
+      // ID GENERATOR INFORMATION 
       connection.query(`
         SELECT
           mayor_name as mayorName,
           mayor_signature as mayorSignature
-        FROM mayor_information`,
+        FROM id_generator_information`,
         [residentId]
       )
     ]);
@@ -273,7 +274,7 @@ export const getPwdIdApplicationById = async (req, res) => {
       pwdPhotoIdPreview: getFileUrl(pwdMediaRows[0]?.pwdPhotoIdPreview, req),
       pwdSignature: getFileUrl(pwdMediaRows[0]?.pwdSignature, req)
     }
-    const mayorInformation = {
+    const idInformation = {
       mayorName: mayorInformationRows[0]?.mayorName,
       mayorSignature: getFileUrl(mayorInformationRows[0]?.mayorSignature, req)
     }
@@ -296,7 +297,7 @@ export const getPwdIdApplicationById = async (req, res) => {
         certifiedPhysician,
         otherInformation,
         pwdMedia,
-        mayorInformation
+        idInformation
       }
     });
   } catch (error) {

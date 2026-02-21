@@ -88,6 +88,7 @@ export const getSurveyByIdService = async (surveyId) => {
           pi.educational_attainment as educationalAttainment, 
           pi.skills,
           pi.occupation,
+          pi.other_occupation AS otherOccupation,
           pi.employment_type as employmentType,
           CAST(pi.monthly_income AS UNSIGNED) as monthlyIncome,
 

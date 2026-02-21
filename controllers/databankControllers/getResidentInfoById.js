@@ -25,6 +25,7 @@ export const getResidentInfoById = async (req, res) => {
         pi.skills,
         pi.occupation,
         pi.company,
+        pi.other_occupation AS otherOccupation,
         pi.employment_status as employmentStatus,
         pi.employment_category as employmentCategory,
         pi.employment_type as employmentType,

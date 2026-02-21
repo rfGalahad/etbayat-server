@@ -15,18 +15,16 @@ export const getResidentInfo = async (req, res) => {
       // PERSONAL INFORMATION
       connection.query(
         `SELECT
-          p.first_name as firstName,
-          p.middle_name as middleName,
-          p.last_name as lastName,
-          p.suffix,
-          DATE_FORMAT(p.birthdate, '%m-%d-%Y') as birthdate,
-          p.sex,
-          p.civil_status as civilStatus,
-          p.birthplace
-        FROM population p
-        INNER JOIN senior_citizen_id_applications pa
-          ON p.resident_id = pa.resident_id
-        WHERE pa.resident_id = ?`,
+          first_name as firstName,
+          middle_name as middleName,
+          last_name as lastName,
+          suffix,
+          DATE_FORMAT(birthdate, '%m-%d-%Y') as birthdate,
+          sex,
+          civil_status as civilStatus,
+          birthplace
+        FROM population 
+        WHERE resident_id = ?`,
         [residentId]
       ),
 
@@ -36,6 +34,7 @@ export const getResidentInfo = async (req, res) => {
           educational_attainment as educationalAttainment,
           skills,
           occupation,
+          other_occupation AS otherOccupation,
           annual_income as annualIncome
         FROM professional_information
         WHERE resident_id = ?`,

@@ -31,13 +31,15 @@ router.post(
 );
 
 // GET RESIDENT INFORMATION
-router.get('/resident/:residentId',
+router.get(
+  '/resident/:residentId',
   authenticateToken,
   spIdApplicationController.getResidentInfo
 );
 
 // GET APPLCATION BY ID
-router.get('/:soloParentId',
+router.get(
+  '/:soloParentId',
   authenticateToken,
   spIdApplicationController.getSpIdApplicationById
 );

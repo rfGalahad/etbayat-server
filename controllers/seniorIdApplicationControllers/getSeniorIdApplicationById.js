@@ -1,4 +1,5 @@
 import pool from '../../config/db.js';
+import { getFileUrl } from '../../utils/fileUtils.js';
 
 export const getSeniorIdApplicationById = async (req, res) => {
   
@@ -24,7 +25,8 @@ export const getSeniorIdApplicationById = async (req, res) => {
       [contactInformationRows],
       [oscaInformationRows],
       [familyComposition],
-      [seniorCitizenMediaRows]
+      [seniorCitizenMediaRows],
+      [idInformationRows]
     ] = await Promise.all([
       // PERSONAL INFORMATION
       connection.query(
@@ -50,6 +52,7 @@ export const getSeniorIdApplicationById = async (req, res) => {
           educational_attainment as educationalAttainment,
           skills,
           occupation,
+          other_occupation AS otherOccupation,
           annual_income as annualIncome
         FROM professional_information
         WHERE resident_id = ?`,
@@ -101,11 +104,20 @@ export const getSeniorIdApplicationById = async (req, res) => {
       connection.query(`
         SELECT
           senior_citizen_photo_id_url as seniorCitizenPhotoIdPreview,
-          senior_citizen_photo_id_public_id as seniorCitizenPhotoIdPublicId,
-          senior_citizen_signature_url as seniorCitizenSignature,
-          senior_citizen_signature_public_id as seniorCitizenSignaturePublicId
+          senior_citizen_signature_url as seniorCitizenSignature
         FROM senior_citizen_id_applications
         WHERE resident_id = ?`,
+        [residentId]
+      ),
+
+      // ID GENERATOR INFORMATION 
+      connection.query(`
+        SELECT
+          mayor_name as mayorName,
+          mayor_signature as mayorSignature,
+          osca_head as oscaHead,
+          osca_head_signature as oscaHeadSignature
+        FROM id_generator_information`,
         [residentId]
       )
     ]);
@@ -114,7 +126,16 @@ export const getSeniorIdApplicationById = async (req, res) => {
     const professionalInformation = professionalInformationRows[0] || {};
     const contactInformation = contactInformationRows[0] || {};
     const oscaInformation = oscaInformationRows[0] || {};
-    const seniorCitizenMedia = seniorCitizenMediaRows[0] || {};
+    const seniorCitizenMedia = {
+      seniorCitizenPhotoIdPreview: getFileUrl(seniorCitizenMediaRows[0]?.seniorCitizenPhotoIdPreview, req),
+      seniorCitizenSignature: getFileUrl(seniorCitizenMediaRows[0]?.seniorCitizenSignature, req)
+    }
+    const idInformation = {
+      mayorName: idInformationRows[0]?.mayorName,
+      mayorSignature: getFileUrl(idInformationRows[0]?.mayorSignature, req),
+      oscaHead: idInformationRows[0]?.oscaHead,
+      oscaHeadSignature: getFileUrl(idInformationRows[0]?.oscaHeadSignature, req),
+    }
    
     /* =======================
        Final Response
@@ -128,7 +149,8 @@ export const getSeniorIdApplicationById = async (req, res) => {
         contactInformation,
         oscaInformation,
         familyComposition,
-        seniorCitizenMedia
+        seniorCitizenMedia,
+        idInformation
       }
     });
   } catch (error) {

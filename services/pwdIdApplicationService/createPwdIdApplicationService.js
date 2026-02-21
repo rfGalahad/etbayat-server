@@ -1,6 +1,139 @@
-import { formatDateForMySQL } from "../../utils/dateUtils.js";
+import pool from '../../config/db.js';
+import { 
+  generateTemporaryResidentId 
+} from '../../controllers/pwdIdApplicationControllers/generateId.js';
+import { 
+  formatDateForMySQL 
+} from "../../utils/dateUtils.js";
+import {
+  base64ToBuffer,
+  saveToLocal,
+  cleanupLocalStorageUploads
+} from '../../utils/fileUtils.js'
 
-export const insertPwdIdApplicationData = async (connection, data) => {
+
+export const createPwdIdApplicationService = async (
+  formData,
+  userId,
+  files
+) => {
+
+  const connection = await pool.getConnection();
+
+  const uploadedFiles = {
+    pwdPhotoId: null,
+    pwdSignature: null
+  };
+
+  const {
+    residentId,
+    personalInformation,
+    professionalInformation,
+    disabilityInformation,
+    contactInformation,
+    governmentIds,
+    familyBackground,
+    accomplishedBy,
+    certifiedPhysician,
+    otherInformation,
+    pwdMedia
+  } = formData
+
+  const pwdId = personalInformation.pwdId;
+
+  try {
+    await connection.beginTransaction();
+
+    /////////////////////////////////////////////////////////////////////
+
+    // GENERATE IDs
+
+    const tempResidentId = residentId
+      ? null
+      : `T-RID-${await generateTemporaryResidentId(connection)}`;
+    
+    /////////////////////////////////////////////////////////////////////
+
+
+    // UPLOAD IMAGES TO LOCAL STORAGE    
+
+    if (files?.pwdPhotoId?.[0]) {
+      uploadedFiles.pwdPhotoId = await saveToLocal(
+        files.pwdPhotoId[0].buffer,
+        'pwd-id-applications/photo-id',
+        `photo-id-${pwdId}`,
+        files.pwdPhotoId[0].mimetype
+      );
+    }
+
+    if (pwdMedia?.pwdSignature) {
+      const signatureBuffer = base64ToBuffer(pwdMedia.pwdSignature);
+      uploadedFiles.pwdSignature = await saveToLocal(
+        signatureBuffer,
+        'pwd-id-applications/applicant-signatures',
+        `signature-${pwdId}.png`
+      );
+    }
+
+    /////////////////////////////////////////////////////////////////////
+    
+
+    // UPSERT APPLICANT
+
+    await upsertApplicantInformationData(connection, { 
+      residentId: residentId || null, 
+      tempResidentId,                   
+      personalInformation,  
+      professionalInformation, 
+      disabilityInformation, 
+      contactInformation, 
+      governmentIds 
+    });
+
+    /////////////////////////////////////////////////////////////////////
+
+    // INSERT APPLICATION
+
+    await insertPwdIdApplicationData(connection, { 
+      pwdId, 
+      userId,
+      residentId: residentId || tempResidentId, 
+      pwdPhotoId: uploadedFiles.pwdPhotoId,
+      pwdSignature: uploadedFiles.pwdSignature,
+      otherInformation,
+      familyBackground,
+      accomplishedBy,
+      certifiedPhysician
+    });
+
+    /////////////////////////////////////////////////////////////////////
+
+    await connection.commit();
+    return pwdId;
+  } catch (error) {
+    await connection.rollback();
+
+    await cleanupLocalStorageUploads(uploadedFiles);
+
+    console.error('❌ Submission failed:', {
+      error: error.message,
+      pwdId,
+      userId,
+      timestamp: new Date().toISOString()
+    });
+
+    throw error;
+  } finally {
+    connection.release();
+  }
+}
+
+///////////////////////////////////////////////////////////////////////
+
+export const insertPwdIdApplicationData = async (
+  connection, 
+  data
+) => {
   // PWD ID APPLICATION
   await connection.query(
     `INSERT INTO pwd_id_applications (
@@ -8,20 +141,16 @@ export const insertPwdIdApplicationData = async (connection, data) => {
       user_id,
       resident_id,
       pwd_photo_id_url,
-      pwd_photo_id_public_id,
       pwd_signature_url,
-      pwd_signature_public_id,
       reporting_unit,
       control_number
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
     [
       data.pwdId,
       data.userId,
       data.residentId ? data.residentId : data.tempResidentId,
       data.pwdPhotoId?.url || null,
-      data.pwdPhotoId?.publicId || null,
       data.pwdSignature?.url || null,
-      data.pwdSignature?.publicId || null,
       data.otherInformation.reportingUnit,
       data.otherInformation.controlNumber
     ]
@@ -248,7 +377,10 @@ export const insertPwdIdApplicationData = async (connection, data) => {
   );
 };
 
-export const upsertApplicantInformationData = async (connection, data) => {
+export const upsertApplicantInformationData = async (
+  connection, 
+  data
+) => {
 
   const residentId = data.residentId || data.tempResidentId;
 
@@ -309,23 +441,26 @@ export const upsertApplicantInformationData = async (connection, data) => {
       employment_type,
       employment_category,
       skills,
-      occupation
-    ) VALUES (?, ?, ?, ?, ?, ?, ?)
+      occupation,
+      other_occupation
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     ON DUPLICATE KEY UPDATE
       educational_attainment = VALUES(educational_attainment),
       employment_status = VALUES(employment_status),
       employment_type = VALUES(employment_type),
       employment_category = VALUES(employment_category),
       skills = VALUES(skills),
-      occupation = VALUES(occupation)`, 
+      occupation = VALUES(occupation),
+      other_occupation = VALUES(other_occupation)`, 
     [
       residentId,
       data.professionalInformation.educationalAttainment,
-      data.professionalInformation.employmentStatus,
-      data.professionalInformation.employmentType,
-      data.professionalInformation.employmentCategory,
-      data.professionalInformation.skills,
-      data.professionalInformation.occupation
+      data.professionalInformation.employmentStatus || null,
+      data.professionalInformation.employmentType || null,
+      data.professionalInformation.employmentCategory || null,
+      data.professionalInformation.skills || null,
+      data.professionalInformation.occupation || null,
+      data.professionalInformation.otherOccupation || null
     ]
   );
 
@@ -403,6 +538,5 @@ export const upsertApplicantInformationData = async (connection, data) => {
       data.governmentIds.pagibigNumber || null
     ]
   );
-  
 };
 

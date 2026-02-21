@@ -2,14 +2,24 @@ import pool from '../../config/db.js';
 
 export const getAllActivityLogs = async (req, res) => {
   try {
+    const { role, userId, barangay } = req.user;
 
-    const [rows] = await pool.query(`
+    let query = `
       SELECT *
       FROM users u
       INNER JOIN activity_log a
-      ON u.user_id = a.user_id 
-      ORDER BY created_at DESC`
-    );
+      ON u.user_id = a.user_id
+    `;
+    let params = [];
+
+    if (role === 'Barangay Secretary') {
+      query += ' WHERE u.barangay = ?';
+      params.push(barangay)
+    }
+
+    query += ' ORDER BY created_at DESC';
+
+    const [rows] = await pool.query(query, params);
 
     res.status(200).json({
       success: true,

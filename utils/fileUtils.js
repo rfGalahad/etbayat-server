@@ -11,27 +11,22 @@ export const base64ToBuffer = (base64) => {
   return Buffer.from(matches[2], 'base64');
 };
 
-export const saveToLocal = async (buffer, folder, filename) => {
+export const saveToLocal = async (buffer, folder, filename, mimetype = null) => {
   try {
-    // Define upload directory (adjust path as needed)
     const uploadDir = path.join(process.cwd(), 'uploads', folder);
     
-    // Create directory if it doesn't exist
     await fs.mkdir(uploadDir, { recursive: true });
     
-    // Generate unique filename with timestamp
-    const timestamp = Date.now();
-    const ext = path.extname(filename);
-    const baseName = path.basename(filename, ext);
-    const uniqueFilename = `${baseName}-${timestamp}${ext}`;
+    const ext = mimetype 
+      ? '.' + mimetype.split('/')[1]  // from mimetype e.g. 'image/jpeg' → '.jpeg'
+      : path.extname(filename);        // fallback to filename extension e.g. '.png'
+    const baseName = path.basename(filename, path.extname(filename));
+    const uniqueFilename = `${baseName}${ext}`;
     
-    // Full file path
     const filePath = path.join(uploadDir, uniqueFilename);
     
-    // Write file to disk
     await fs.writeFile(filePath, buffer);
     
-    // Return file info (similar structure to Cloudinary response)
     return {
       url: `/uploads/${folder}/${uniqueFilename}`,
       filePath: filePath,
@@ -44,9 +39,15 @@ export const saveToLocal = async (buffer, folder, filename) => {
 };
 
 export const deleteFromLocal = async (filePath) => {
-  return fs.unlink(filePath).catch(err => {
+  try {
+    const cleanedPath = filePath.startsWith('/')
+      ? filePath.slice(1)
+      : filePath;
+    const absolutePath = path.join(process.cwd(), cleanedPath);
+    await fs.unlink(absolutePath);
+  } catch (err) {
     console.error(`Error deleting file ${filePath}:`, err);
-  });
+  }
 };
 
 export const cleanupLocalStorageUploads = async ({ 
@@ -56,16 +57,9 @@ export const cleanupLocalStorageUploads = async ({
   try {
     const filesToDelete = [];
 
-    // Collect all file paths that were successfully uploaded     
-    if (photoId?.filePath) {
-      filesToDelete.push(photoId.filePath);
-    }
-    
-    if (signature?.filePath) {
-      filesToDelete.push(signature.filePath);
-    }
+    if (photoId) filesToDelete.push(photoId);
+    if (signature) filesToDelete.push(signature);
 
-    // Delete all uploaded files from local storage
     if (filesToDelete.length > 0) {
       await Promise.all(filesToDelete.map(deleteFromLocal));
       console.log(`Cleaned up ${filesToDelete.length} files from local storage`);
@@ -73,6 +67,14 @@ export const cleanupLocalStorageUploads = async ({
   } catch (error) {
     console.error('Error cleaning up local uploads:', error);
   }
+};
+
+export const getFilePath = (fileUrl) => {
+  if (!fileUrl) return null;
+  const url = new URL(fileUrl);
+  // Converts '/uploads/pwd-id-applications/photo-id/photo-id-123.png'
+  // to an absolute path on disk
+  return path.join(process.cwd(), 'public', url.pathname);
 };
 
 export const getFileUrl = (filePath, req) => {

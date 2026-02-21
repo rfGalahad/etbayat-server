@@ -1,4 +1,5 @@
 import pool from '../../config/db.js';
+import { getFileUrl } from '../../utils/fileUtils.js';
 
 export const getSpIdApplicationById = async (req, res) => {
   
@@ -10,6 +11,7 @@ export const getSpIdApplicationById = async (req, res) => {
     // GET RESIDENT ID
     const [soloParentIdApplicationRows] = await connection.query(
       `SELECT 
+        created_at as createdAt,
         resident_id as residentId
       FROM solo_parent_id_applications
       WHERE solo_parent_id = ?`,
@@ -25,7 +27,8 @@ export const getSpIdApplicationById = async (req, res) => {
       [householdComposition],
       [problemNeedsRows],
       [emergencyContactRows],
-      [soloParentMediaRows]
+      [soloParentMediaRows],
+      [idInformationRows]
     ] = await Promise.all([
       // PERSONAL INFORMATION
       connection.query(
@@ -86,6 +89,7 @@ export const getSpIdApplicationById = async (req, res) => {
           educational_attainment as educationalAttainment,
           employment_status as employmentStatus,
           occupation,
+          other_occupation AS otherOccupation,
           company,
           monthly_income as monthlyIncome
         FROM professional_information
@@ -111,7 +115,7 @@ export const getSpIdApplicationById = async (req, res) => {
         SELECT
           household_composition_id as householdCompositionId,
           first_name AS firstName,
-          middle_name AS middle_name,
+          middle_name AS middleName,
           last_name AS lastName,
           suffix,
           sex,
@@ -153,21 +157,42 @@ export const getSpIdApplicationById = async (req, res) => {
       connection.query(`
         SELECT
           solo_parent_photo_id_url as soloParentPhotoIdPreview,
-          solo_parent_photo_id_public_id as soloParentPhotoIdPublicId,
-          solo_parent_signature_url as soloParentSignature,
-          solo_parent_signature_public_id as soloParentSignaturePublicId
+          solo_parent_signature_url as soloParentSignature
         FROM solo_parent_id_applications
         WHERE resident_id = ?`,
         [residentId]
+      ),
+
+      // ID GENERATOR INFORMATION 
+      connection.query(`
+        SELECT
+          mayor_name as mayorName,
+          mayor_signature as mayorSignature,
+          mswdo_officer as mswdoOfficer,
+          mswdo_signature as mswdoSignature
+        FROM id_generator_information`,
+        [residentId]
       )
     ]);
+
+    const validUntil = new Date(soloParentIdApplicationRows[0].createdAt);
+    validUntil.setFullYear(validUntil.getFullYear() + 1);
 
     const personalInformation = personalInformationRows[0] || {};
     const professionalInformation = professionalInformationRows[0] || {};
     const contactInformation = contactInformationRows[0] || {};
     const problemNeeds = problemNeedsRows[0] || {};
     const emergencyContact = emergencyContactRows[0] || {};
-    const soloParentMedia = soloParentMediaRows[0] || {};
+    const soloParentMedia = {
+      soloParentPhotoIdPreview: getFileUrl(soloParentMediaRows[0]?.soloParentPhotoIdPreview, req),
+      soloParentSignature: getFileUrl(soloParentMediaRows[0]?.soloParentSignature, req)
+    }
+    const idInformation = {
+      mayorName: idInformationRows[0]?.mayorName,
+      mayorSignature: getFileUrl(idInformationRows[0]?.mayorSignature, req),
+      mswdoOfficer: idInformationRows[0]?.mswdoOfficer,
+      mswdoSignature: getFileUrl(idInformationRows[0]?.mswdoSignature, req),
+    }
    
     /* =======================
        Final Response
@@ -175,6 +200,8 @@ export const getSpIdApplicationById = async (req, res) => {
     res.json({
       success: true,
       data: {
+        validUntil,
+        soloParentId,
         residentId : residentId,
         personalInformation,
         professionalInformation,
@@ -182,7 +209,8 @@ export const getSpIdApplicationById = async (req, res) => {
         householdComposition,
         problemNeeds,
         emergencyContact,
-        soloParentMedia
+        soloParentMedia,
+        idInformation
       }
     });
   } catch (error) {

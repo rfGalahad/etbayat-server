@@ -1,12 +1,135 @@
+import pool from '../../config/db.js';
 import {
   parseIncome
 } from '../../utils/numberUtils.js';
 import { 
   formatDateForMySQL 
 } from "../../utils/dateUtils.js";
+import { 
+  generateSeniorId,
+  generateTemporaryResidentId 
+} from '../../controllers/seniorIdApplicationControllers/generateId.js';
+import { 
+  base64ToBuffer, 
+  saveToLocal,
+  cleanupLocalStorageUploads 
+} from '../../utils/fileUtils.js';
 
-export const insertApplicantInformationData = async (connection, data) => { 
-  if (data.residentId) return;
+
+export const createSeniorIdApplicationService = async (
+  formData,
+  userId,
+  files
+) => {
+
+  const connection = await pool.getConnection();
+
+  const uploadedFiles = {
+    seniorCitizenPhotoId: null,
+    seniorCitizenSignature: null
+  }
+
+  const {
+    residentId,
+    personalInformation,
+    professionalInformation,
+    contactInformation,
+    oscaInformation,
+    familyComposition,
+    seniorCitizenMedia
+  } = formData
+
+  const seniorCitizenId = `SC-${await generateSeniorId(connection)}`;
+
+  try {
+    await connection.beginTransaction();
+
+    /////////////////////////////////////////////////////////////////////
+
+    // GENERATE IDs
+
+    const tempResidentId =  residentId 
+      ? null
+      : `T-RID-${await generateTemporaryResidentId(connection)}`;
+
+    /////////////////////////////////////////////////////////////////////
+
+    // UPLOAD IMAGES TO LOCAL STORAGE
+
+    if (files?.seniorCitizenPhotoId?.[0]) {
+      uploadedFiles.seniorCitizenPhotoId = await saveToLocal(
+        files.seniorCitizenPhotoId[0].buffer,
+        'senior-citizen-id-applications/photo-id',
+        `photo-id-${seniorCitizenId}`,
+        files.seniorCitizenPhotoId[0].mimetype
+      );
+    }
+
+    if (seniorCitizenMedia?.seniorCitizenSignature) {
+      const signatureBuffer = base64ToBuffer(seniorCitizenMedia.seniorCitizenSignature);
+      uploadedFiles.seniorCitizenSignature = await saveToLocal(
+        signatureBuffer,
+        'senior-citizen-id-applications/applicant-signatures',
+        `signature-${seniorCitizenId}.png`
+      );
+    }
+
+    /////////////////////////////////////////////////////////////////////
+
+    // UPSERT APPLICANT
+
+    await upsertApplicantInformationData(connection, {
+      residentId: residentId || null,
+      tempResidentId,
+      personalInformation,
+      professionalInformation,
+      contactInformation
+    })
+
+    /////////////////////////////////////////////////////////////////////
+
+    // INSERT APPLICATION
+
+    await insertSeniorIdApplicationData(connection, { 
+      seniorCitizenId, 
+      userId,
+      residentId: residentId || tempResidentId, 
+      seniorCitizenPhotoId: uploadedFiles.seniorCitizenPhotoId,
+      seniorCitizenSignature: uploadedFiles.seniorCitizenSignature,
+      familyComposition,
+      oscaInformation
+    });
+
+    /////////////////////////////////////////////////////////////////////
+
+    await connection.commit();
+    return seniorCitizenId;
+  } catch (error) {
+    await connection.rollback();
+    
+    await cleanupLocalStorageUploads(uploadedFiles);
+
+    console.error('❌ Submission failed:', {
+      error: error.message,
+      seniorCitizenId,
+      userId,
+      timestamp: new Date().toISOString()
+    });
+
+    throw error;
+  } finally {
+    connection.release();
+  }
+}
+
+/////////////////////////////////////////////////////////////////////
+
+export const upsertApplicantInformationData = async (
+  connection,
+  data
+) => {
+
+  const residentId = data.residentId || data.tempResidentId;
 
   // POPULATION
   await connection.query(`
@@ -20,9 +143,18 @@ export const insertApplicantInformationData = async (connection, data) => {
       birthdate,
       civil_status,
       birthplace
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`, 
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ON DUPLICATE KEY UPDATE
+      first_name = VALUES(first_name),
+      middle_name = VALUES(middle_name),
+      last_name = VALUES(last_name),
+      suffix = VALUES(suffix),
+      sex = VALUES(sex),
+      birthdate = VALUES(birthdate),
+      civil_status = VALUES(civil_status),
+      birthplace = VALUES(birthplace)`, 
     [
-      data.tempResidentId,
+      residentId,
       data.personalInformation.firstName,
       data.personalInformation.middleName || null,
       data.personalInformation.lastName,
@@ -41,94 +173,45 @@ export const insertApplicantInformationData = async (connection, data) => {
       educational_attainment,
       skills,
       occupation,
+      other_occupation,
       annual_income
-    ) VALUES (?, ?, ?, ?, ?)`, 
+    ) VALUES (?, ?, ?, ?, ?, ?)
+    ON DUPLICATE KEY UPDATE
+      educational_attainment = VALUES(educational_attainment),
+      skills = VALUES(skills),
+      occupation = VALUES(occupation),
+      other_occupation = VALUES(other_occupation),
+      annual_income = VALUES(annual_income)`, 
     [
-      data.tempResidentId,
+      residentId,
       data.professionalInformation.educationalAttainment,
-      data.professionalInformation.skills,
-      data.professionalInformation.occupation,
+      data.professionalInformation.employmentStatus || null,
+      data.professionalInformation.occupation || null,
+      data.professionalInformation.otherOccupation || null,
       parseIncome(data.professionalInformation.annualIncome)
     ]
   );
 
   // CONTACT INFORMATION
   await connection.query(`
-    INSERT INTO contact_information (
+    INSERT INTO contact_information ( 
       resident_id,
       street,
       barangay,
       contact_number
-    ) VALUES (?, ?, ?, ?)`, 
+    ) VALUES (?, ?, ?, ?)
+    ON DUPLICATE KEY UPDATE
+      street = VALUES(street),
+      barangay = VALUES(barangay),
+      contact_number = VALUES(contact_number)`, 
     [
-      data.tempResidentId,
+      residentId,
       data.contactInformation.houseStreet,
       data.contactInformation.barangay,
       data.contactInformation.contactNumber || null
     ]
   );
-};
-
-export const updateApplicantInformationData = async (connection, data) => { 
-  if (!data.residentId) return;
-
-  // POPULATION
-  await connection.query(
-    `UPDATE population 
-     SET first_name = ?,
-         middle_name = ?,
-         last_name = ?,
-         suffix = ?,
-         sex = ?,
-         birthdate = ?,
-         civil_status = ?,
-         birthplace = ?
-     WHERE resident_id = ?`, 
-    [
-      data.personalInformation.firstName,
-      data.personalInformation.middleName || null,
-      data.personalInformation.lastName,
-      data.personalInformation.suffix || null,
-      data.personalInformation.sex,
-      formatDateForMySQL(data.personalInformation.birthdate),
-      data.personalInformation.civilStatus,
-      data.personalInformation.birthplace || null,
-      data.residentId
-    ]
-  );
-
-  // PROFESSIONAL INFORMATION
-  await connection.query(
-    `UPDATE professional_information 
-     SET educational_attainment = ?,
-         skills = ?,
-         occupation = ?,
-         annual_income = ?
-     WHERE resident_id = ?`, 
-    [
-      data.professionalInformation.educationalAttainment,
-      data.professionalInformation.skills,
-      data.professionalInformation.occupation,
-      parseIncome(data.professionalInformation.annualIncome),
-      data.residentId
-    ]
-  );
-
-  // CONTACT INFORMATION
-  await connection.query(
-    `UPDATE contact_information 
-     SET street = ?,
-         barangay = ?,
-         contact_number = ?
-     WHERE resident_id = ?`, 
-    [
-      data.contactInformation.houseStreet || null,
-      data.contactInformation.barangay,
-      data.contactInformation.contactNumber || null,
-      data.residentId
-    ]
-  );
-};
+} 
 
 export const insertSeniorIdApplicationData = async (connection, data) => {
   // SENIOR CITIZEN ID APPLICATION

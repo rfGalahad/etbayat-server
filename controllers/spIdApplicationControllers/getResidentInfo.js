@@ -47,6 +47,7 @@ export const getResidentInfo = async (req, res) => {
           educational_attainment as educationalAttainment,
           employment_status as employmentStatus,
           occupation,
+          other_occupation AS otherOccupation,
           company,
           monthly_income as monthlyIncome
         FROM professional_information

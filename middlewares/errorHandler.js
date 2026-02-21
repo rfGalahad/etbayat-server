@@ -1,5 +1,5 @@
-import { apiError } from "../utils/apiResponse";
-import { mapError } from "../utils/mapError";
+import { apiError } from "../utils/apiResponse.js";
+import { mapError } from "../utils/mapError.js";
 
 
 export const errorHandler = (error, req, res, next) => {

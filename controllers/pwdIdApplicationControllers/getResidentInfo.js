@@ -44,7 +44,8 @@ export const getResidentInfo = async (req, res) => {
           employment_type as employmentType,
           employment_category as employmentCategory,
           skills,
-          occupation
+          occupation,
+          other_occupation AS otherOccupation
         FROM professional_information
         WHERE resident_id = ?`,
         [residentId]

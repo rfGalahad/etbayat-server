@@ -4,6 +4,24 @@ export const getAllStats = async (req, res) => {
   try {
     const [rows] = await pool.query(`
       SELECT
+        -- Population added today
+        (SELECT COUNT(*)
+        FROM population p
+        JOIN family_information f ON p.family_id = f.family_id
+        JOIN surveys s ON f.survey_id = s.survey_id
+        WHERE DATE(s.created_at) = CURDATE()
+        AND p.resident_id LIKE 'RID%'
+        ) AS populationToday,
+
+        -- Population added yesterday
+        (SELECT COUNT(*)
+        FROM population p
+        JOIN family_information f ON p.family_id = f.family_id
+        JOIN surveys s ON f.survey_id = s.survey_id
+        WHERE DATE(s.created_at) = CURDATE() - INTERVAL 1 DAY
+        AND p.resident_id LIKE 'RID%'
+        ) AS populationYesterday,
+
         -- Total Households
         (SELECT COUNT(*) FROM households) AS totalHousehold,
 
@@ -33,6 +51,21 @@ export const getAllStats = async (req, res) => {
         (SELECT COUNT(*) FROM social_classification
           WHERE classification_code = 'PWD' AND resident_id LIKE 'RID%'
         ) AS totalPWD,
+
+        -- Total Non-Ivatan
+        (SELECT COUNT(*) FROM social_classification
+          WHERE classification_code = 'IPULA' AND resident_id LIKE 'RID%'
+        ) AS totalNonIvatan,
+
+        -- Total OFW
+        (SELECT COUNT(*) FROM social_classification
+          WHERE classification_code = 'OFW' AND resident_id LIKE 'RID%'
+        ) AS totalOFW,
+
+        -- Total Out of Town
+        (SELECT COUNT(*) FROM social_classification
+          WHERE classification_code = 'OT' AND resident_id LIKE 'RID%'
+        ) AS totalOutOfTown,
 
         -- Total Solo Parent
         (SELECT COUNT(*) FROM social_classification

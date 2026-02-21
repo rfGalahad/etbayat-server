@@ -4,6 +4,7 @@ export const getSoloParent = async (req, res) => {
   try {
     const [rows] = await pool.query(`
       SELECT
+          r.resident_id AS residentId,
           fam.family_id as familyId,
 
           /* Parent full name (same for all rows in the family) */

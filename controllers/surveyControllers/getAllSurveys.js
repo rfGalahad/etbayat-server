@@ -26,7 +26,7 @@ export const getAllSurveys = async (req, res) => {
 
     let params = [];
 
-    if (role === 'Barangay Official') {
+    if (role === 'Barangay Official' || role === 'Barangay Secretary') {
       query += ' WHERE s.user_id = ?';
       params.push(userId);
     }

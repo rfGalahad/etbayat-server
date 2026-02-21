@@ -1004,6 +1004,7 @@ export const syncProfessionalInformation = async (
       r.educationalAttainment || null,
       r.skills || null,
       r.occupation || null,
+      r.otherOccupation || null,
       r.company || null,
       r.employmentStatus || null,
       r.employmentCategory || null,
@@ -1016,13 +1017,13 @@ export const syncProfessionalInformation = async (
       parseIncome(r.pensionIncome)
     ],
     columns: [
-      'resident_id', 'educational_attainment', 'skills', 'occupation',
+      'resident_id', 'educational_attainment', 'skills', 'occupation', 'other_occupation',
       'company', 'employment_status', 'employment_category', 'employment_type',
       'monthly_income', 'annual_income', 'receiving_pension', 'pension_type',
       'other_pension_type', 'pension_income'
     ],
     updateColumns: [
-      'educational_attainment', 'skills', 'occupation', 'company',
+      'educational_attainment', 'skills', 'occupation', 'other_occupation', 'company', 
       'employment_status', 'employment_category', 'employment_type',
       'monthly_income', 'annual_income', 'receiving_pension', 'pension_type',
       'other_pension_type', 'pension_income'

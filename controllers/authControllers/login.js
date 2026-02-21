@@ -21,7 +21,10 @@ export const login = async (req, res) => {
         userId: user.user_id,
         role: user.role,
         username: user.username,
-        name: user.name
+        name: user.name,
+        barangay: user.barangay,
+        passwordChangedAt: user.password_changed_at,
+        mustChangePassword: user.must_change_password
       }, 
       process.env.JWT_SECRET, 
       { expiresIn: "1d" }

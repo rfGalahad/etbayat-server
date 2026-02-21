@@ -1,4 +1,125 @@
-import { formatDateForMySQL } from "../../utils/dateUtils.js";
+import pool from "../../config/db.js";
+import { 
+  base64ToBuffer,
+  saveToLocal 
+} from "../../utils/fileUtils.js";
+import { 
+  upsertApplicantInformationData
+} from "./createPwdIdApplicationService.js";
+
+
+export const updatePwdIdApplicationService = async (
+  formData,
+  pwdId,
+  files
+) => {
+
+  const connection = await pool.getConnection();
+
+  const uploadedFiles = {
+    pwdSignature: null,
+    pwdPhotoId: null
+  }
+
+  const {
+    residentId,
+    personalInformation,
+    professionalInformation,
+    disabilityInformation,
+    contactInformation,
+    governmentIds,
+    familyBackground,
+    accomplishedBy,
+    certifiedPhysician,
+    otherInformation,
+    pwdMedia
+  } = formData
+
+  try {
+    await connection.beginTransaction();
+
+    /////////////////////////////////////////////////////////////////////
+
+    // UPDATE IMAGES
+    const isNewSignature = pwdMedia?.pwdSignature?.startsWith('data:image/');
+
+    // PHOTO ID
+    if (files?.pwdPhotoId?.[0]) {
+      uploadedFiles.pwdPhotoId = await saveToLocal(
+        files.pwdPhotoId[0].buffer,
+        'pwd-id-applications/photo-id',
+        `photo-id-${pwdId}`,
+        files.pwdPhotoId[0].mimetype
+      );
+
+      await connection.query(`
+        UPDATE pwd_id_applications
+        SET pwd_photo_id_url = ?
+      `, [uploadedFiles.pwdPhotoId.url])  
+    }
+
+    // SIGNATURE
+    if (isNewSignature) {
+      const signatureBuffer = base64ToBuffer(pwdMedia.pwdSignature);
+      uploadedFiles.pwdSignature = await saveToLocal(
+        signatureBuffer,
+        'pwd-id-applications/applicant-signatures',
+        `signature-${pwdId}.png`
+      );
+
+      await connection.query(`
+        UPDATE pwd_id_applications
+        SET pwd_signature_url = ?
+      `, [uploadedFiles.pwdSignature.url]
+    )
+    }
+
+    /////////////////////////////////////////////////////////////////////
+
+    // UPDATE APPLICATION
+
+    await updatePwdIdApplicationData(connection, {
+      pwdId,
+      otherInformation,
+      familyBackground,
+      accomplishedBy,
+      certifiedPhysician
+    })
+
+    /////////////////////////////////////////////////////////////////////
+
+    // UPSERT APPLICATION
+
+    await upsertApplicantInformationData(connection, { 
+      residentId: residentId, 
+      tempResidentId: null,                   
+      personalInformation,  
+      professionalInformation, 
+      disabilityInformation, 
+      contactInformation, 
+      governmentIds 
+    });
+
+    /////////////////////////////////////////////////////////////////////
+
+    await connection.commit();
+    return pwdId;
+  } catch (error) {
+    await connection.rollback();
+
+    console.error('❌ Update failed:', {
+      error: error.message,
+      pwdId,
+      timestamp: new Date().toISOString()
+    });
+
+    throw error;
+  } finally {
+    connection.release();
+  }
+}
+
+///////////////////////////////////////////////////////////////////////////////
 
 const upsertPersonWithRole = async ({
   connection,
@@ -93,26 +214,16 @@ export const updatePwdIdApplicationData = async (connection, data) => {
   // UPDATE PWD ID APPLICATION
   await connection.query(`
     UPDATE pwd_id_applications 
-    SET pwd_photo_id_url = ?,
-        pwd_photo_id_public_id = ?,
-        pwd_signature_url = ?,
-        pwd_signature_public_id = ?,
-        reporting_unit = ?,
+    SET reporting_unit = ?,
         control_number =  ?
     WHERE pwd_id = ?
   `,
     [
-      data.pwdPhotoId?.url || null,
-      data.pwdPhotoId?.publicId || null,
-      data.pwdSignature?.url || null,
-      data.pwdSignature?.publicId || null,
       data.otherInformation.reportingUnit,
       data.otherInformation.controlNumber,
       data.pwdId
     ]
   );
-
-  // UPDATE FAMILY BACKGROUND
 
   // FATHER
   await upsertPersonWithRole({
@@ -188,8 +299,6 @@ export const updatePwdIdApplicationData = async (connection, data) => {
     }
   });
 
-  // UPDATE OFFICERS
-
   // PROCESSING OFFICER
   await upsertPersonWithRole({
     connection,
@@ -233,107 +342,3 @@ export const updatePwdIdApplicationData = async (connection, data) => {
   });
 };
 
-export const updateApplicantInformationData = async (connection, data) => { 
-  if (!data.residentId) return;
-
-  console.log('UPDATING APPLICANT INFORMATION...')
-
-  // POPULATION
-  await connection.query(
-    `UPDATE population 
-     SET first_name = ?,
-         middle_name = ?,
-         last_name = ?,
-         suffix = ?,
-         sex = ?,
-         birthdate = ?,
-         civil_status = ?
-     WHERE resident_id = ?`, 
-    [
-      data.personalInformation.firstName,
-      data.personalInformation.middleName || null,
-      data.personalInformation.lastName,
-      data.personalInformation.suffix || null,
-      data.personalInformation.sex,
-      formatDateForMySQL(data.personalInformation.birthdate),
-      data.personalInformation.civilStatus,
-      data.residentId
-    ]
-  );
-
-  // PROFESSIONAL INFORMATION
-  await connection.query(
-    `UPDATE professional_information 
-     SET educational_attainment = ?,
-         employment_status = ?,
-         employment_type = ?,
-         employment_category = ?,
-         skills = ?,
-         occupation = ?
-     WHERE resident_id = ?`, 
-    [
-      data.professionalInformation.educationalAttainment,
-      data.professionalInformation.employmentStatus,
-      data.professionalInformation.employmentType,
-      data.professionalInformation.employmentCategory,
-      data.professionalInformation.skills,
-      data.professionalInformation.occupation,
-      data.residentId
-    ]
-  );
-
-  // HEALTH INFORMATION
-  await connection.query(
-    `UPDATE health_information 
-     SET blood_type = ?,
-         disability_type = ?,
-         disability_cause = ?,
-         disability_specific = ?
-     WHERE resident_id = ?`, 
-    [
-      data.personalInformation.bloodType || null,
-      data.disabilityInformation.disabilityType,
-      data.disabilityInformation.disabilityCause,
-      data.disabilityInformation.disabilitySpecific,
-      data.residentId
-    ]
-  );
-
-  // CONTACT INFORMATION
-  await connection.query(
-    `UPDATE contact_information 
-     SET contact_number = ?,
-         telephone_number = ?,
-         email_address = ?,
-         barangay = ?,
-         street = ?
-     WHERE resident_id = ?`, 
-    [
-      data.contactInformation.contactNumber || null,
-      data.contactInformation.landlineNumber || null,
-      data.contactInformation.emailAddress || null,
-      data.contactInformation.barangay,
-      data.contactInformation.houseStreet,
-      data.residentId
-    ]
-  );
-
-  // GOVERNMENT IDs
-  await connection.query(
-    `UPDATE government_ids 
-     SET sss = ?,
-         gsis = ?,
-         psn = ?,
-         philhealth = ?,
-         pagibig = ?
-     WHERE resident_id = ?`, 
-    [
-      data.governmentIds.sssNumber || null,
-      data.governmentIds.gsisNumber || null,
-      data.governmentIds.psnNumber || null,
-      data.governmentIds.philhealthNumber || null,
-      data.governmentIds.pagibigNumber || null,
-      data.residentId
-    ]
-  );
-};

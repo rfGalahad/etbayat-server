@@ -14,6 +14,8 @@ import hazardMapRoutes from './routes/hazardMapRoutes.js'
 import dashboardRoutes from './routes/dashboardRoutes.js'
 import databankRoutes from './routes/databankRoutes.js'
 
+import { errorHandler } from './middlewares/errorHandler.js';
+
 // INITIALIZE EXPRESS APP
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -25,7 +27,7 @@ app.use(cors({
     'http://localhost:4173',
     'http://127.0.0.1:5173',
     'http://127.0.0.1:4173',
-    'http://192.168.0.190:5173',
+    'http://192.168.1.241:5173',
     'http://192.168.0.101:4173',
     'https://e-tbayatmswdo.com',
     'https://www.e-tbayatmswdo.com' 
@@ -53,6 +55,8 @@ app.use('/api/seniorCitizen', seniorIdApplicationRoutes);
 app.use('/api/hazardMap', hazardMapRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/databank', databankRoutes);
+
+app.use(errorHandler);
 
 // START SERVER
 app.listen(PORT, () => {

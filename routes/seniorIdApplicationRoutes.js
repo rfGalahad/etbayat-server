@@ -31,7 +31,7 @@ router.post(
 );
 
 // GET RESIDENT INFORMATION
-router.get('resident/:residentId',
+router.get('/resident/:residentId',
   authenticateToken,
   seniorIdApplicationController.getResidentInfo
 );

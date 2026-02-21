@@ -1,72 +1,122 @@
+import pool from '../../config/db.js';
 import {
   parseIncome
 } from '../../utils/numberUtils.js';
 import { 
   formatDateForMySQL 
 } from "../../utils/dateUtils.js";
+import { 
+  upsertApplicantInformationData 
+} from './createSeniorIdApplicationService.js';
+import { 
+  base64ToBuffer, 
+  saveToLocal 
+} from '../../utils/fileUtils.js';
 
 
-export const updateApplicantInformationData = async (connection, data) => { 
-  if (!data.residentId) return;
+export const updateSeniorIdApplicationService = async (
+  formData,
+  seniorCitizenId,
+  files
+) => {
 
-  // POPULATION
-  await connection.query(
-    `UPDATE population 
-     SET first_name = ?,
-         middle_name = ?,
-         last_name = ?,
-         suffix = ?,
-         sex = ?,
-         birthdate = ?,
-         civil_status = ?,
-         birthplace = ?
-     WHERE resident_id = ?`, 
-    [
-      data.personalInformation.firstName,
-      data.personalInformation.middleName || null,
-      data.personalInformation.lastName,
-      data.personalInformation.suffix || null,
-      data.personalInformation.sex,
-      formatDateForMySQL(data.personalInformation.birthdate),
-      data.personalInformation.civilStatus,
-      data.personalInformation.birthplace || null,
-      data.residentId
-    ]
-  );
+  const connection = await pool.getConnection();
 
-  // PROFESSIONAL INFORMATION
-  await connection.query(
-    `UPDATE professional_information 
-     SET educational_attainment = ?,
-         skills = ?,
-         occupation = ?,
-         annual_income = ?
-     WHERE resident_id = ?`, 
-    [
-      data.professionalInformation.educationalAttainment,
-      data.professionalInformation.skills,
-      data.professionalInformation.occupation,
-      parseIncome(data.professionalInformation.annualIncome),
-      data.residentId
-    ]
-  );
+  const uploadedFiles = {
+    seniorCitizenPhotoId: null,
+    seniorCitizenSignature: null
+  }
 
-  // CONTACT INFORMATION
-  await connection.query(
-    `UPDATE contact_information 
-     SET street = ?,
-         barangay = ?,
-         contact_number = ?
-     WHERE resident_id = ?`, 
-    [
-      data.contactInformation.houseStreet || null,
-      data.contactInformation.barangay,
-      data.contactInformation.contactNumber || null,
-      data.residentId
-    ]
-  );
-};
+  const {
+    residentId,
+    personalInformation,
+    professionalInformation,
+    contactInformation,
+    oscaInformation,
+    familyComposition,
+    seniorCitizenMedia
+  } = formData
 
+  try {
+    await connection.beginTransaction();
+
+    /////////////////////////////////////////////////////////////////////
+
+    // UPDATE IMAGES
+    const isNewSignature = seniorCitizenMedia?.seniorCitizenSignature?.startsWith('data:image/');
+
+    // PHOTO ID
+    if (files?.seniorCitizenPhotoId?.[0]) {
+      uploadedFiles.seniorCitizenPhotoId = await saveToLocal(
+        files.seniorCitizenPhotoId[0].buffer,
+        'senior-citizen-id-applications/photo-id',
+        `photo-id-${seniorCitizenId}`,
+        files.seniorCitizenPhotoId[0].mimetype
+      );
+
+      await connection.query(`
+        UPDATE senior_citizen_id_applications
+        SET senior_citizen_photo_id_url = ?
+      `, [uploadedFiles.seniorCitizenPhotoId.url])  
+    }
+
+    // SIGNATURE
+    if (isNewSignature) {
+      const signatureBuffer = base64ToBuffer(seniorCitizenMedia.seniorCitizenSignature);
+      uploadedFiles.seniorCitizenSignature = await saveToLocal(
+        signatureBuffer,
+        'senior-citizen-id-applications/applicant-signatures',
+        `signature-${seniorCitizenId}.png`
+      );
+
+      await connection.query(`
+        UPDATE senior_citizen_id_applications
+        SET senior_citizen_signature_url = ?
+      `, [uploadedFiles.seniorCitizenSignature.url]
+      )
+    }
+    
+    /////////////////////////////////////////////////////////////////////
+
+    // UPDATE APPLICATION
+
+    await updateSeniorIdApplicationData(connection, {
+      residentId,
+      seniorCitizenId,
+      oscaInformation,
+      familyComposition
+    });
+
+    /////////////////////////////////////////////////////////////////////
+
+    // UPSERT APPLICANT
+
+    await upsertApplicantInformationData(connection, {
+      residentId: residentId,
+      tempResidentId: null,
+      personalInformation,
+      professionalInformation,
+      contactInformation
+    })
+
+    /////////////////////////////////////////////////////////////////////
+
+    await connection.commit();
+    return seniorCitizenId;
+  } catch (error) {
+    await connection.rollback();
+
+    console.error('❌ Update failed:', {
+      error: error.message,
+      seniorCitizenId,
+      timestamp: new Date().toISOString()
+    });
+
+    throw error;
+  } finally {
+    connection.release();
+  }
+}
 
 export const updateSeniorIdApplicationData = async (connection, data) => {
   
