@@ -8,17 +8,16 @@ export const updateSurvey = async (req, res, next) => {
     const userId = req.user.userId;
     const files = req.files || {};
 
-    const result = await updateSurveyService(
+    const surveyId = await updateSurveyService(
       formData, 
       userId, 
       files
     );
     
-    console.log('RESULT', result)
     return res.status(201).json({ 
       success: true,
       message: 'Survey udpated successfully',
-      surveyId: result.surveyId
+      surveyId
     });
 
   } catch (error) {
