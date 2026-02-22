@@ -57,7 +57,7 @@ router.put(
   '/users/update-profile', 
   authenticateToken, 
   activityLogger((req, resData) => 
-    `Updated user ${resData.userId}`
+    `Updated user profile ${resData.userId}`
   ),
   authController.updateUserProfile
 );
