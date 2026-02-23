@@ -32,12 +32,14 @@ export const mapError = (error) => {
 
   // 🗄 Duplicate entry (must come BEFORE ER_)
   if (error.code === 'ER_DUP_ENTRY') {
+    const match = error.sqlMessage?.match(/for key '(.+?)'/);
+    const field = match ? match[1] : 'record';
+
     return {
       status: 409,
       code: 'DUPLICATE_ENTRY',
-      message: error.message,
-      userMessage:
-        'This record already exists.'
+      message: error.sqlMessage,
+      userMessage: `${field} already exists.`
     };
   }
 
