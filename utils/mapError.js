@@ -1,4 +1,13 @@
 export const mapError = (error) => {
+
+  console.error('🔥 RAW ERROR:', {
+    message: error.message,
+    code: error.code,
+    errno: error.errno,
+    sqlMessage: error.sqlMessage,
+    sql: error.sql
+  });
+  
   // 🌐 Network
   if (error.code === 'ECONNRESET' || error.code === 'ETIMEDOUT') {
     return {
