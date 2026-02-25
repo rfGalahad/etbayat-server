@@ -5,9 +5,6 @@ export const getAllStats = async (req, res) => {
     const { role, barangay } = req.user;
     const isBarangaySecretary = role === 'Barangay Secretary';
 
-    console.log('ROLE', role);
-    console.log('BARANGAY', barangay);
-
     const params = isBarangaySecretary ? [barangay] : [];
 
     const query = `
@@ -77,8 +74,6 @@ export const getAllStats = async (req, res) => {
     `;
 
     const [rows] = await pool.query(query, params);
-
-    console.log('Stats Query Result:', rows);
 
     res.status(200).json({ success: true, data: rows });
 
