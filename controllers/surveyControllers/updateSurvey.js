@@ -1,6 +1,4 @@
-import { 
-  updateSurveyService
-} from '../../services/surveyService/updateSurveyService.js';
+import { updateSurveyService } from '../../services/surveyService/updateSurveyService.js';
 
 export const updateSurvey = async (req, res, next) => {  
   try {
@@ -16,13 +14,11 @@ export const updateSurvey = async (req, res, next) => {
     
     return res.status(201).json({ 
       success: true,
-      message: 'Survey udpated successfully',
+      message: 'Survey updated successfully',
       surveyId
     });
 
   } catch (error) {
     next(error);
-  } finally {
-    connection.release();
-  }
+  } 
 };

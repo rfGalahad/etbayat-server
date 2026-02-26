@@ -21,6 +21,7 @@ import {
   prepareSurveyDataValues 
 } from "../../utils/transformers/surveyDataTransformers.js";
 import { 
+  deleteMultipleFromCloudinary,
   cleanupCloudinaryUploads, 
   uploadMultipleToCloudinary, 
   uploadToCloudinary 
@@ -232,7 +233,6 @@ export const updateSurveyService = async (formData, userId, files) => {
 
     ////////////////////////////////////////////////////////////////////////////////
 
-    console.log('SURVEY ID', surveyId)
     await connection.commit();
     return surveyId;
     
@@ -252,6 +252,8 @@ export const updateSurveyService = async (formData, userId, files) => {
       respondentPhoto,
       respondentSignature
     });
+
+    throw error
   } finally {
     connection.release();
   }
@@ -502,7 +504,6 @@ export const updateHouseholdData = async (connection, data) => {
   const { 
     householdId, 
     householdInformation, 
-    waterInformation,
     imageValues
   } = data;
 
@@ -550,7 +551,6 @@ export const upsertHouseholdData = async (connection, data) => {
   const { 
     householdId, 
     householdInformation, 
-    waterInformation, 
     houseImages 
   } = data;
 
@@ -929,11 +929,9 @@ export const syncSocialClassifications = async (
       if (member.outOfTown) classifications.push(CLASSIFICATIONS.outOfTown);
       if (member.pwd) classifications.push(CLASSIFICATIONS.pwd);
       if (member.soloParent) classifications.push(CLASSIFICATIONS.soloParent);
+      if (member.nonIvatan) classifications.push(CLASSIFICATIONS.nonIvatan);
 
-      if (
-        member.youthCategory &&
-        CLASSIFICATIONS[member.youthCategory]
-      ) {
+      if (member.youthCategory && CLASSIFICATIONS[member.youthCategory]) {
         classifications.push(CLASSIFICATIONS[member.youthCategory]);
       }
 

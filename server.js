@@ -14,6 +14,7 @@ import hazardMapRoutes from './routes/hazardMapRoutes.js'
 import dashboardRoutes from './routes/dashboardRoutes.js'
 import databankRoutes from './routes/databankRoutes.js'
 import getAllIdInformationRoutes from './routes/idInformationRoutes.js'
+import printIdRoutes from './routes/printIdRoutes.js'
 
 import { errorHandler } from './middlewares/errorHandler.js';
 
@@ -29,8 +30,8 @@ app.use(cors({
   // credentials: true
 }));
 
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: '50mb' })); 
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 // ROUTES
 
@@ -48,6 +49,7 @@ app.use('/api/hazardMap', hazardMapRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/databank', databankRoutes);
 app.use('/api/idInformation', getAllIdInformationRoutes);
+app.use('/api/printId', printIdRoutes);
 
 app.use(errorHandler);
 
