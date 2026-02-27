@@ -317,7 +317,6 @@ export const updateSurveyData = async (connection, data) => {
     ]
   );
 
-
   // UPDATE ACKNOWLEDGEMENT
   if (data.respondentPhoto || data.respondentSignature) {
     await connection.query(`
@@ -409,7 +408,6 @@ export const updateSurveyData = async (connection, data) => {
       ]
     );
   }
-  
 
   // UPSERT CROPS PLANTED
   await bulkUpsert(
@@ -493,7 +491,11 @@ export const updateSurveyData = async (connection, data) => {
     data.waterInformation.waterSources?.join(', ') || null,
     data.waterInformation.waterInformationId
   ]);
-  
+
+  await connection.query(
+    `UPDATE surveys SET updated_at = CURRENT_TIMESTAMP WHERE survey_id = ?`,
+    [data.surveyId]
+  );
 };
 
 // =================================================================================

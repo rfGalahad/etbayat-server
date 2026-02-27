@@ -1,12 +1,24 @@
 import cloudinary from '../config/cloudinary.js';
 import { Readable } from 'stream';
 
+const sanitizeFilename = (name) => {
+  return name
+    .replace(/\.[^/.]+$/, '') // remove extension
+    .toLowerCase()
+    .replace(/&/g, 'and') // optional
+    .replace(/[^a-z0-9-_]/g, '-') // replace invalid chars
+    .replace(/-+/g, '-') // remove duplicate dashes
+    .replace(/^-|-$/g, ''); // trim dashes
+};
+
 export const uploadToCloudinary = (buffer, folder, filename) => {
   return new Promise((resolve, reject) => {
+    const safeName = sanitizeFilename(filename);
+
     const uploadStream = cloudinary.uploader.upload_stream(
       {
         folder: folder,
-        public_id: `${Date.now()}-${filename}`,
+        public_id: `${Date.now()}-${safeName}`,
         resource_type: 'auto',
         transformation: [
           { quality: 'auto:good' },
