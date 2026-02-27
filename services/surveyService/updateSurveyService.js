@@ -383,10 +383,10 @@ export const updateSurveyData = async (connection, data) => {
           forestland = ?
       WHERE farm_lots_id = ?`,
       [
-        data.farmlots.ownershipType,
-        data.farmlots.cultivation,
-        data.farmlots.pastureland,
-        data.farmlots.forestland,
+        data.farmlots.ownershipType || null,
+        data.farmlots.cultivation || null,
+        data.farmlots.pastureland || null,
+        data.farmlots.forestland || null,
         data.farmlots.farmlotsId
       ]
     );
