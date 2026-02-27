@@ -25,6 +25,7 @@ const PORT = process.env.PORT || 3000;
 // MIDDLEWARE
 app.use(cors({
   origin: [
+    'https://e-tbayatmswdo.com',
     'https://www.e-tbayatmswdo.com',
     'http://localhost:5173',
     'http://192.168.0.188:5173'
