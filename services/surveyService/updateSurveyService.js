@@ -90,7 +90,7 @@ export const updateSurveyService = async (formData, userId, files) => {
     ////////////////////////////////////////////////////////////////////////////////
 
     // DELETE IMAGES FROM CLOUDINARY AND DATABASE
-
+    
     const hasPublicIdToDelete = householdInformation.publicIdToDelete?.length > 0;
     const hasImageIdToDelete = householdInformation.imageIdToDelete?.length > 0;
 

@@ -15,6 +15,13 @@ router.get(
   surveyController.getAllSurveys
 );
 
+// GET ALL HOUSEHOLD HEADS
+router.get(
+  `/householdHeads`,
+  authenticateToken,
+  surveyController.getAllHouseholdHeads
+)
+
 // CREATE SURVEY
 router.post(
   '/', 

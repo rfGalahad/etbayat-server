@@ -28,6 +28,8 @@ app.use(cors({
     'https://e-tbayatmswdo.com',
     'https://www.e-tbayatmswdo.com',
     'http://localhost:5173',
+    'http://localhost:4173',
+    'http://192.168.0.214:5173',
     'http://192.168.0.188:5173'
   ],
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
