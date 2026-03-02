@@ -6,6 +6,7 @@ export const getAllHouseholdHeads = async (req, res) => {
 
     const [rows] = await pool.query(`
       SELECT 
+        household_id,
         family_head_first_name  AS firstName,
         family_head_middle_name AS middleName,
         family_head_last_name   AS lastName,
