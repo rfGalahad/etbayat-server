@@ -23,6 +23,11 @@ router.get('/age-segregation/male',
   databankController.getMaleSegregation
 );
 
+router.get('/age-segregation/age', 
+  authenticateToken, 
+  databankController.getAgeSegregation
+);
+
 // GET HOUSEHOLD
 router.get('/household', 
   authenticateToken, 
