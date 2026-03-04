@@ -37,8 +37,8 @@ export const getFemaleSegregation = async (req, res) => {
           COALESCE(SUM(CASE WHEN real_data.barangay = 'Sta. Rosa' THEN 1 ELSE 0 END), 0) AS 'Sta. Rosa',
           COALESCE(SUM(CASE WHEN real_data.barangay = 'Sta. Maria' THEN 1 ELSE 0 END), 0) AS 'Sta. Maria',
           COALESCE(SUM(CASE WHEN real_data.barangay = 'Sta. Lucia' THEN 1 ELSE 0 END), 0) AS 'Sta. Lucia',
-          COALESCE(SUM(CASE WHEN real_data.barangay = 'San Rafael' THEN 1 ELSE 0 END), 0) AS 'San Rafael',
-          COALESCE(SUM(CASE WHEN real_data.barangay = 'Yawran' THEN 1 ELSE 0 END), 0) AS 'Yawran',
+          COALESCE(SUM(CASE WHEN real_data.barangay = 'San Rafael' AND real_data.sitio_yawran = FALSE THEN 1 ELSE 0 END), 0) AS 'San Rafael',
+          COALESCE(SUM(CASE WHEN real_data.barangay = 'San Rafael' AND real_data.sitio_yawran = TRUE THEN 1 ELSE 0 END), 0) AS 'Yawran',
           COALESCE(SUM(CASE WHEN real_data.barangay = 'Raele' THEN 1 ELSE 0 END), 0) AS 'Raele',
           COALESCE(COUNT(real_data.barangay), 0) AS 'Total'
       FROM age_brackets ab
@@ -49,7 +49,8 @@ export const getFemaleSegregation = async (req, res) => {
                   WHEN TIMESTAMPDIFF(YEAR, p.birthdate, CURDATE()) >= 101 THEN '101 and above'
                   ELSE CAST(TIMESTAMPDIFF(YEAR, p.birthdate, CURDATE()) AS CHAR)
               END AS age_bracket,
-              h.barangay
+              h.barangay,
+              h.sitio_yawran
           FROM population p
           INNER JOIN family_information fi ON p.family_id = fi.family_id
           INNER JOIN households h ON fi.household_id = h.household_id
@@ -65,12 +66,12 @@ export const getFemaleSegregation = async (req, res) => {
           COALESCE(SUM(CASE WHEN real_data.barangay = 'Sta. Rosa' THEN 1 ELSE 0 END), 0) AS 'Sta. Rosa',
           COALESCE(SUM(CASE WHEN real_data.barangay = 'Sta. Maria' THEN 1 ELSE 0 END), 0) AS 'Sta. Maria',
           COALESCE(SUM(CASE WHEN real_data.barangay = 'Sta. Lucia' THEN 1 ELSE 0 END), 0) AS 'Sta. Lucia',
-          COALESCE(SUM(CASE WHEN real_data.barangay = 'San Rafael' THEN 1 ELSE 0 END), 0) AS 'San Rafael',
-          COALESCE(SUM(CASE WHEN real_data.barangay = 'Yawran' THEN 1 ELSE 0 END), 0) AS 'Yawran',
+          COALESCE(SUM(CASE WHEN real_data.barangay = 'San Rafael' AND real_data.sitio_yawran = FALSE THEN 1 ELSE 0 END), 0) AS 'San Rafael',
+          COALESCE(SUM(CASE WHEN real_data.barangay = 'San Rafael' AND real_data.sitio_yawran = TRUE THEN 1 ELSE 0 END), 0) AS 'Yawran',
           COALESCE(SUM(CASE WHEN real_data.barangay = 'Raele' THEN 1 ELSE 0 END), 0) AS 'Raele',
           COALESCE(COUNT(real_data.barangay), 0) AS 'Total'
       FROM (
-          SELECT h.barangay
+          SELECT h.barangay, h.sitio_yawran
           FROM population p
           INNER JOIN family_information fi ON p.family_id = fi.family_id
           INNER JOIN households h ON fi.household_id = h.household_id
@@ -138,8 +139,8 @@ export const getMaleSegregation = async (req, res) => {
           COALESCE(SUM(CASE WHEN real_data.barangay = 'Sta. Rosa' THEN 1 ELSE 0 END), 0) AS 'Sta. Rosa',
           COALESCE(SUM(CASE WHEN real_data.barangay = 'Sta. Maria' THEN 1 ELSE 0 END), 0) AS 'Sta. Maria',
           COALESCE(SUM(CASE WHEN real_data.barangay = 'Sta. Lucia' THEN 1 ELSE 0 END), 0) AS 'Sta. Lucia',
-          COALESCE(SUM(CASE WHEN real_data.barangay = 'San Rafael' THEN 1 ELSE 0 END), 0) AS 'San Rafael',
-          COALESCE(SUM(CASE WHEN real_data.barangay = 'Yawran' THEN 1 ELSE 0 END), 0) AS 'Yawran',
+          COALESCE(SUM(CASE WHEN real_data.barangay = 'San Rafael' AND real_data.sitio_yawran = FALSE THEN 1 ELSE 0 END), 0) AS 'San Rafael',
+          COALESCE(SUM(CASE WHEN real_data.barangay = 'San Rafael' AND real_data.sitio_yawran = TRUE THEN 1 ELSE 0 END), 0) AS 'Yawran',
           COALESCE(SUM(CASE WHEN real_data.barangay = 'Raele' THEN 1 ELSE 0 END), 0) AS 'Raele',
           COALESCE(COUNT(real_data.barangay), 0) AS 'Total'
       FROM age_brackets ab
@@ -150,7 +151,8 @@ export const getMaleSegregation = async (req, res) => {
                   WHEN TIMESTAMPDIFF(YEAR, p.birthdate, CURDATE()) >= 101 THEN '101 and above'
                   ELSE CAST(TIMESTAMPDIFF(YEAR, p.birthdate, CURDATE()) AS CHAR)
               END AS age_bracket,
-              h.barangay
+              h.barangay,
+              h.sitio_yawran
           FROM population p
           INNER JOIN family_information fi ON p.family_id = fi.family_id
           INNER JOIN households h ON fi.household_id = h.household_id
@@ -166,12 +168,12 @@ export const getMaleSegregation = async (req, res) => {
           COALESCE(SUM(CASE WHEN real_data.barangay = 'Sta. Rosa' THEN 1 ELSE 0 END), 0) AS 'Sta. Rosa',
           COALESCE(SUM(CASE WHEN real_data.barangay = 'Sta. Maria' THEN 1 ELSE 0 END), 0) AS 'Sta. Maria',
           COALESCE(SUM(CASE WHEN real_data.barangay = 'Sta. Lucia' THEN 1 ELSE 0 END), 0) AS 'Sta. Lucia',
-          COALESCE(SUM(CASE WHEN real_data.barangay = 'San Rafael' THEN 1 ELSE 0 END), 0) AS 'San Rafael',
-          COALESCE(SUM(CASE WHEN real_data.barangay = 'Yawran' THEN 1 ELSE 0 END), 0) AS 'Yawran',
+          COALESCE(SUM(CASE WHEN real_data.barangay = 'San Rafael' AND real_data.sitio_yawran = FALSE THEN 1 ELSE 0 END), 0) AS 'San Rafael',
+          COALESCE(SUM(CASE WHEN real_data.barangay = 'San Rafael' AND real_data.sitio_yawran = TRUE THEN 1 ELSE 0 END), 0) AS 'Yawran',
           COALESCE(SUM(CASE WHEN real_data.barangay = 'Raele' THEN 1 ELSE 0 END), 0) AS 'Raele',
           COALESCE(COUNT(real_data.barangay), 0) AS 'Total'
       FROM (
-          SELECT h.barangay
+          SELECT h.barangay, h.sitio_yawran
           FROM population p
           INNER JOIN family_information fi ON p.family_id = fi.family_id
           INNER JOIN households h ON fi.household_id = h.household_id
