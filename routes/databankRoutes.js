@@ -5,6 +5,18 @@ import { activityLogger } from '../middlewares/activityLogger.js';
 
 const router = express.Router();
 
+// DATABANK
+router.get('/segregation', 
+  authenticateToken, 
+  databankController.getSegregation
+);
+
+router.get('/averageFamilySize', 
+  authenticateToken, 
+  databankController.getAverageFamilySize
+);
+
+
 // GET POPULATION
 router.get('/population', 
   authenticateToken, 
@@ -21,11 +33,6 @@ router.get('/age-segregation/female',
 router.get('/age-segregation/male', 
   authenticateToken, 
   databankController.getMaleSegregation
-);
-
-router.get('/age-segregation/age', 
-  authenticateToken, 
-  databankController.getAgeSegregation
 );
 
 // GET HOUSEHOLD

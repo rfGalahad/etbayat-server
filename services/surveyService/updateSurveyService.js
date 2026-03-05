@@ -29,6 +29,9 @@ import {
 import { 
   CLASSIFICATIONS 
 } from '../../constants/surveyConstants.js';
+import {
+  base64ToBuffer
+} from '../../utils/fileUtils.js'
 
 
 const CLOUDINARY_PATHS = {

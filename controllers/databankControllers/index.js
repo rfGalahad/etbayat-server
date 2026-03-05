@@ -1,3 +1,6 @@
+export { getSegregation } from './getDatabank.js'
+export { getAverageFamilySize } from './getDatabank.js'
+
 export { getPopulation } from './getPopulation.js'
 export { getHousehold } from './getHousehold.js'
 export { getSoloParent } from './getSoloParent.js'
@@ -5,7 +8,7 @@ export { getPwd } from './getPwd.js'
 export { getFamily } from './getFamily.js'
 export { getFemaleSegregation } from './getAgeSegregation.js'
 export { getMaleSegregation } from './getAgeSegregation.js'
-export { getAgeSegregation } from './getAgeSegregation.js'
+
 export { getResidentInfoById } from './getResidentInfoById.js'
 export { getMenMasterlist } from './getMenMasterlist.js'
 export { getWomenMasterlist } from './getWomenMasterlist.js'
