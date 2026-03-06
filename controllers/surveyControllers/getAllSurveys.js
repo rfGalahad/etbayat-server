@@ -2,7 +2,7 @@ import pool from '../../config/db.js';
 
 export const getAllSurveys = async (req, res) => {
   try {
-    const { role, userId } = req.user;
+    const { role, userId, barangay } = req.user;
 
     let query = `
       SELECT  
@@ -26,7 +26,12 @@ export const getAllSurveys = async (req, res) => {
 
     let params = [];
 
-    if (role === 'Barangay Official' || role === 'Barangay Secretary') {
+    if (role === 'Barangay Secretary') {
+      query += ' WHERE h.barangay = ?';
+      params.push(barangay);
+    }
+
+    if (role === 'Barangay Official') {
       query += ' WHERE s.user_id = ?';
       params.push(userId);
     }

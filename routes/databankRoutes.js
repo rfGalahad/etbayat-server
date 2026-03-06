@@ -16,6 +16,10 @@ router.get('/averageFamilySize',
   databankController.getAverageFamilySize
 );
 
+router.get('/youthSummary', 
+  authenticateToken, 
+  databankController.getYouthSummary
+);
 
 // GET POPULATION
 router.get('/population', 

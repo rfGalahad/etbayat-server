@@ -167,27 +167,83 @@ export const getYouthSummary = async (req, res) => {
   try {
     const [rows] = await pool.query(`
       SELECT 
-        barangay_group,
-        SUM(CASE WHEN family_class = 'A' THEN 1 ELSE 0 END) AS A,
-        SUM(CASE WHEN family_class = 'B' THEN 1 ELSE 0 END) AS B,
-        SUM(CASE WHEN family_class = 'C' THEN 1 ELSE 0 END) AS C,
-        SUM(CASE WHEN family_class = 'D' THEN 1 ELSE 0 END) AS D,
-        SUM(CASE WHEN family_class = 'E' THEN 1 ELSE 0 END) AS E
+        CASE 
+            WHEN h.barangay = 'San Rafael' AND h.sitio_yawran = 1 THEN 'Sitio Yawran'
+            ELSE h.barangay 
+        END AS barangay,
 
-      FROM (
-        SELECT 
-          CASE 
-            WHEN h.barangay = 'San Rafael' AND h.sitio_yawran = 1 THEN 'Yawran'
-            WHEN h.barangay = 'San Rafael' THEN 'San Rafael'
-            ELSE h.barangay
-          END AS barangay_group,
-          fi.family_class,
-          fi.family_id,
-          h.household_id
-        FROM family_information fi
-        LEFT JOIN households h ON h.household_id = fi.household_id
-      ) AS grouped_data
+        -- In School
+        SUM(CASE WHEN TIMESTAMPDIFF(YEAR, p.birthdate, CURDATE()) BETWEEN 15 AND 17 AND sc.classification_code = 'IS' THEN 1 ELSE 0 END) AS "IS 15-17",
+        SUM(CASE WHEN TIMESTAMPDIFF(YEAR, p.birthdate, CURDATE()) BETWEEN 18 AND 24 AND sc.classification_code = 'IS' THEN 1 ELSE 0 END) AS "IS 18-24",
+        SUM(CASE WHEN TIMESTAMPDIFF(YEAR, p.birthdate, CURDATE()) BETWEEN 25 AND 30 AND sc.classification_code = 'IS' THEN 1 ELSE 0 END) AS "IS 25-30",
 
+        -- Out of School
+        SUM(CASE WHEN TIMESTAMPDIFF(YEAR, p.birthdate, CURDATE()) BETWEEN 15 AND 17 AND sc.classification_code = 'OSY' THEN 1 ELSE 0 END) AS "OSY 15-17",
+        SUM(CASE WHEN TIMESTAMPDIFF(YEAR, p.birthdate, CURDATE()) BETWEEN 18 AND 24 AND sc.classification_code = 'OSY' THEN 1 ELSE 0 END) AS "OSY 18-24",
+        SUM(CASE WHEN TIMESTAMPDIFF(YEAR, p.birthdate, CURDATE()) BETWEEN 25 AND 30 AND sc.classification_code = 'OSY' THEN 1 ELSE 0 END) AS "OSY 25-30",
+
+        -- Working Youth
+        SUM(CASE WHEN TIMESTAMPDIFF(YEAR, p.birthdate, CURDATE()) BETWEEN 15 AND 17 AND sc.classification_code = 'WY' THEN 1 ELSE 0 END) AS "WY 15-17",
+        SUM(CASE WHEN TIMESTAMPDIFF(YEAR, p.birthdate, CURDATE()) BETWEEN 18 AND 24 AND sc.classification_code = 'WY' THEN 1 ELSE 0 END) AS "WY 18-24",
+        SUM(CASE WHEN TIMESTAMPDIFF(YEAR, p.birthdate, CURDATE()) BETWEEN 25 AND 30 AND sc.classification_code = 'WY' THEN 1 ELSE 0 END) AS "WY 25-30",
+
+        -- Non-Working Youth
+        SUM(CASE WHEN TIMESTAMPDIFF(YEAR, p.birthdate, CURDATE()) BETWEEN 15 AND 17 AND sc.classification_code = 'NWY' THEN 1 ELSE 0 END) AS "NWY 15-17",
+        SUM(CASE WHEN TIMESTAMPDIFF(YEAR, p.birthdate, CURDATE()) BETWEEN 18 AND 24 AND sc.classification_code = 'NWY' THEN 1 ELSE 0 END) AS "NWY 18-24",
+        SUM(CASE WHEN TIMESTAMPDIFF(YEAR, p.birthdate, CURDATE()) BETWEEN 25 AND 30 AND sc.classification_code = 'NWY' THEN 1 ELSE 0 END) AS "NWY 25-30",
+
+        -- Youth with Special Needs
+        SUM(CASE WHEN TIMESTAMPDIFF(YEAR, p.birthdate, CURDATE()) BETWEEN 15 AND 17 AND sc.classification_code = 'PWD' THEN 1 ELSE 0 END) AS "PWD 15-17",
+        SUM(CASE WHEN TIMESTAMPDIFF(YEAR, p.birthdate, CURDATE()) BETWEEN 18 AND 24 AND sc.classification_code = 'PWD' THEN 1 ELSE 0 END) AS "PWD 18-24",
+        SUM(CASE WHEN TIMESTAMPDIFF(YEAR, p.birthdate, CURDATE()) BETWEEN 25 AND 30 AND sc.classification_code = 'PWD' THEN 1 ELSE 0 END) AS "PWD 25-30",
+
+        -- Total
+        COUNT(DISTINCT p.resident_id) AS total_youth
+
+    FROM households h
+    JOIN family_information fi ON h.household_id = fi.household_id
+    JOIN population p ON fi.family_id = p.family_id
+    JOIN social_classification sc ON p.resident_id = sc.resident_id
+
+    WHERE sc.classification_code IN ('IS', 'OSY', 'WY', 'NWY', 'PWD')
+      AND TIMESTAMPDIFF(YEAR, p.birthdate, CURDATE()) BETWEEN 15 AND 30
+
+    GROUP BY 
+        CASE 
+            WHEN h.barangay = 'San Rafael' AND h.sitio_yawran = 1 THEN 'Sitio Yawran'
+            ELSE h.barangay 
+        END
+
+    ORDER BY barangay;
+    `);
+    
+    return res.status(200).json({ data: rows });
+
+  } catch (error) {
+    console.error('Error getting average family size:', error);
+    return res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
+export const getOsySummary = async (req, res) => {
+  try {
+    const [rows] = await pool.query(`
+      SELECT 
+        CASE 
+          WHEN h.sitio_yawran = 1 THEN 'Yawran'
+          ELSE h.barangay
+        END AS barangay_group,
+        SUM(CASE WHEN p.sex = 'Male' THEN 1 ELSE 0 END) AS male_osy,
+        SUM(CASE WHEN p.sex = 'Female' THEN 1 ELSE 0 END) AS female_osy,
+        COUNT(*) AS total_osy
+      FROM social_classification sc
+      JOIN population p 
+        ON sc.resident_id = p.resident_id
+      JOIN family_information fi 
+        ON p.family_id = fi.family_id
+      JOIN households h 
+        ON fi.household_id = h.household_id
+      WHERE sc.classification_code = 'OSY'
       GROUP BY barangay_group
       ORDER BY barangay_group;
     `);

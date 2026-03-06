@@ -1,5 +1,6 @@
 export { getSegregation } from './getDatabank.js'
 export { getAverageFamilySize } from './getDatabank.js'
+export { getYouthSummary } from './getDatabank.js'
 
 export { getPopulation } from './getPopulation.js'
 export { getHousehold } from './getHousehold.js'
