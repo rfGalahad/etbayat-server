@@ -7,15 +7,15 @@ export const getResidentInfoById = async (req, res) => {
     const [rows] = await pool.query(`
       SELECT
 
-        f.survey_id AS surveyId,
+        f.survey_id   AS surveyId,
 
         p.resident_id AS residentId,
-        p.family_id AS familyId,
+        p.family_id   AS familyId,
 
-        CONCAT(p.first_name, ' ', 
-        IFNULL(CONCAT(SUBSTRING(p.middle_name, 1, 1), '. '), ''), 
-        p.last_name, ' ', 
-        IFNULL(p.suffix, '')) AS fullName,
+        p.first_name  AS firstName, 
+        p.middle_name AS middleName, 
+        p.last_name   AS lastName, 
+        p.suffix,
 
         p.sex,
         DATE_FORMAT(p.birthdate, '%m-%d-%Y') AS birthdate,
