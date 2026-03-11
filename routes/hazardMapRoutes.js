@@ -24,6 +24,12 @@ router.get('/household/:householdId',
   hazardMapController.getAllHousehold
 )
 
+// GET ALL HOUSE DETAILS
+router.get('/houseDetails/:householdId',
+  authenticateToken,
+  hazardMapController.getHouseDetails
+)
+
 // GET ALL HAZARD AREA
 router.get('/', 
   authenticateToken, 

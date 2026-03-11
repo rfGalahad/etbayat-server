@@ -8,6 +8,9 @@ const router = express.Router();
 // DATABANK
 router.get('/segregation', 
   authenticateToken, 
+  activityLogger((req, resData) => 
+    `Export Databank`
+  ),
   databankController.getSegregation
 );
 

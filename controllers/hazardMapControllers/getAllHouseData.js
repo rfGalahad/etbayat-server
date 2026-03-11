@@ -5,13 +5,8 @@ export const getAllHousePins = async (req, res) => {
     const [rows] = await pool.query(`
       SELECT 
         household_id as householdId,
-        house_structure as houseStructure,
-        house_condition as houseCondition,
         latitude,
-        longitude,
-        street,
-        barangay,
-        municipality
+        longitude
       FROM households
     `);
 
@@ -78,7 +73,7 @@ export const getAllHousehold = async (req, res) => {
           IFNULL(CONCAT(' ', p.suffix), '')
         ) AS name,
         p.sex,
-        p.birthdate,
+        DATE_FORMAT(p.birthdate, '%m-%d-%Y') AS birthdate,
         p.civil_status AS civilStatus,
         p.religion,
         p.relation_to_family_head AS relationToFamilyHead,
@@ -86,9 +81,18 @@ export const getAllHousehold = async (req, res) => {
         fi.family_class AS familyClass,
         fi.monthly_income AS monthlyIncome,
         fi.irregular_income AS irregularIncome,
-        fi.family_income AS familyIncome
+        fi.family_income AS familyIncome,
+        h.household_id as householdId,
+        h.house_structure as houseStructure,
+        h.house_condition as houseCondition,
+        h.latitude,
+        h.longitude,
+        h.street,
+        h.barangay,
+        h.municipality
       FROM population p
       INNER JOIN family_information fi ON p.family_id = fi.family_id
+      INNER JOIN households h ON h.household_id = fi.household_id
       WHERE p.family_id IN (?)
       ORDER BY 
         p.family_id,
@@ -100,6 +104,33 @@ export const getAllHousehold = async (req, res) => {
     res.status(200).json(rows);
   } catch (error) {
     console.error('Error getting household members:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+export const getHouseDetails = async (req, res) => {
+  try {
+    const { householdId } = req.params;
+
+    // Get all population members for all families in this household
+    const [rows] = await pool.query(`
+      SELECT 
+        household_id    AS householdId,
+        house_structure AS houseStructure,
+        house_condition AS houseCondition,
+        latitude,
+        longitude,
+        street,
+        barangay,
+        municipality
+      FROM households
+      WHERE household_id = ?`,
+      [householdId]
+    );
+
+    res.status(200).json(rows[0]);
+  } catch (error) {
+    console.error('Error getting household details:', error);
     res.status(500).json({ message: 'Server error' });
   }
 };

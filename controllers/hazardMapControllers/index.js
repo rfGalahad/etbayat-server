@@ -6,7 +6,7 @@ export { deleteHazardArea } from './deleteHazardArea.js';
 export { getAllHousePins } from './getAllHouseData.js';
 export { getAllHouseImages } from './getAllHouseData.js';
 export { getAllHousehold } from './getAllHouseData.js';
-
+export { getHouseDetails } from './getAllHouseData.js'
 
 
 
