@@ -21,4 +21,5 @@ export { getYouthMasterlist } from './getYouthMasterlist.js'
 export { getChildrenMasterlist } from './getChildrenMasterlist.js'
 export { getOsyMasterlist } from './getOsyMasterlist.js'
 
+export { getFamilyDetailsById } from './getFamilyDetailsById.js'
 export { updateFamilyClass } from './updateFamilyClass.js'

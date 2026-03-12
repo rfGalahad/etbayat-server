@@ -128,6 +128,12 @@ router.get('/resident/:residentId',
   databankController.getResidentInfoById
 );
 
+// GET FAMILY INFO BY ID
+router.get('/family/:familyId',
+  authenticateToken,
+  databankController.getFamilyDetailsById
+);
+
 router.put('/family/:familyId', 
   authenticateToken, 
   activityLogger((req, resData) => 

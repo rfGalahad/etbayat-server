@@ -4,43 +4,29 @@ export const getFamily = async (req, res) => {
   try {
     const [rows] = await pool.query(`
       SELECT
-            fi.family_id as familyId,
+        fi.family_id as familyId,
 
-            /* 2. Family head full name */
-            fh.last_name   AS lastName,
-            fh.first_name  AS firstName,
-            fh.middle_name AS middleName,
-            fh.suffix      AS suffix,
+        fh.last_name   AS lastName,
+        fh.first_name  AS firstName,
+        fh.middle_name AS middleName,
+        fh.suffix      AS suffix,
 
-            /* 3. Total residents */
-            COUNT(p.resident_id) AS totalResidents,
-
-            /* 4. Total male */
-            SUM(CASE WHEN p.sex = 'Male' THEN 1 ELSE 0 END) AS totalMale,
-
-            /* 5. Total female */
-            SUM(CASE WHEN p.sex = 'Female' THEN 1 ELSE 0 END) AS totalFemale,
-
-            /* 6. Monthly income */
-            fi.family_income as totalMonthlyIncome,
-
-            /* 7. Total expenses (all expense tables) */
-            (
-                IFNULL(fe.total_food, 0) +
-                IFNULL(ee.total_education, 0) +
-                IFNULL(fxe.total_family, 0) +
-                IFNULL(me.total_monthly, 0)
-            ) AS totalMonthlyExpenses,
-
-            /* 8. Livestock list */
-            lv.livestock_list as otherResources,
-
-            /* 9. Multiple family */
-            h.multiple_family as multipleFamily,
-
-            fi.family_class AS familyClass,
-
-            h.barangay
+        COUNT(p.resident_id) AS totalResidents,
+        SUM(CASE WHEN p.sex = 'Male' THEN 1 ELSE 0 END) AS totalMale,
+        SUM(CASE WHEN p.sex = 'Female' THEN 1 ELSE 0 END) AS totalFemale,
+        fi.family_income as totalMonthlyIncome,
+        (
+            IFNULL(fe.total_food, 0) +
+            IFNULL(ee.total_education, 0) +
+            IFNULL(fxe.total_family, 0) +
+            IFNULL(me.total_monthly, 0)
+        ) AS totalMonthlyExpenses,
+        /* 8. Livestock list */
+        lv.livestock_list as otherResources,
+        /* 9. Multiple family */
+        h.multiple_family as multipleFamily,
+        fi.family_class AS familyClass,
+        h.barangay
 
         FROM family_information fi
 

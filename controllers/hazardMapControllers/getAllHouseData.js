@@ -6,7 +6,8 @@ export const getAllHousePins = async (req, res) => {
       SELECT 
         household_id as householdId,
         latitude,
-        longitude
+        longitude,
+        house_structure AS houseStructure
       FROM households
     `);
 
@@ -81,18 +82,9 @@ export const getAllHousehold = async (req, res) => {
         fi.family_class AS familyClass,
         fi.monthly_income AS monthlyIncome,
         fi.irregular_income AS irregularIncome,
-        fi.family_income AS familyIncome,
-        h.household_id as householdId,
-        h.house_structure as houseStructure,
-        h.house_condition as houseCondition,
-        h.latitude,
-        h.longitude,
-        h.street,
-        h.barangay,
-        h.municipality
+        fi.family_income AS familyIncome
       FROM population p
       INNER JOIN family_information fi ON p.family_id = fi.family_id
-      INNER JOIN households h ON h.household_id = fi.household_id
       WHERE p.family_id IN (?)
       ORDER BY 
         p.family_id,
