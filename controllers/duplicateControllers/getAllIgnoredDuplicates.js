@@ -7,7 +7,7 @@ export const getAllIgnoredDuplicates = async (req, res) => {
         id.id,
         id.resident_id_1,
         id.resident_id_2,
-        id.ignored_at,
+        DATE_FORMAT(id.ignored_at, '%m-%d-%Y') as dateIgnored,
         id.ignored_by,
         id.reason,
         p1.first_name AS first_name_1,
