@@ -26,39 +26,39 @@ export const getHousehold = async (req, res) => {
             )
           ELSE
             CONCAT(
-                h.family_head_last_name, ', ',
-                h.family_head_first_name,
-                IF(h.family_head_middle_name IS NOT NULL AND h.family_head_middle_name <> '',
-                  CONCAT(' ', h.family_head_middle_name), ''),
-                IF(h.family_head_suffix IS NOT NULL AND h.family_head_suffix <> '',
-                  CONCAT(' ', h.family_head_suffix), '')
+              h.family_head_last_name, ', ',
+              h.family_head_first_name,
+              IF(h.family_head_middle_name IS NOT NULL AND h.family_head_middle_name <> '',
+                CONCAT(' ', h.family_head_middle_name), ''),
+              IF(h.family_head_suffix IS NOT NULL AND h.family_head_suffix <> '',
+                CONCAT(' ', h.family_head_suffix), '')
             )
         END AS familyHead,
 
-        h.house_structure AS houseStructure,
-        h.house_condition AS houseCondition,
+        h.house_structure  AS houseStructure,
+        h.house_condition  AS houseCondition,
         h.latitude,
         h.longitude,
         h.street,
         h.barangay,
 
-        CASE
-          WHEN EXISTS (
-              SELECT 1
-              FROM house_images hi
-              WHERE hi.household_id = h.household_id
-          ) THEN 1
-          ELSE 0
-        END AS hasHouseImage
+        -- 1 if at least one image exists, 0 otherwise
+        IF(COUNT(hi.house_image_url) > 0, 1, 0) AS hasHouseImage,
 
+        -- Aggregates all image URLs into a JSON array e.g. ["url1","url2"]
+        -- Returns NULL when there are no images
+        NULLIF(
+          JSON_ARRAYAGG(hi.house_image_url),
+          JSON_ARRAY(NULL)
+        ) AS images
 
       FROM households h
+      LEFT JOIN house_images hi
+          ON hi.household_id = h.household_id
       LEFT JOIN family_information f
           ON h.household_id = f.household_id
       LEFT JOIN population p
           ON f.family_id = p.family_id
-      LEFT JOIN house_images hi
-          ON h.household_id = hi.household_id
 
       GROUP BY
           h.household_id,
@@ -76,19 +76,24 @@ export const getHousehold = async (req, res) => {
 
       ORDER BY h.household_id;
     `);
-    
+
+    // mysql2 automatically deserializes JSON_ARRAYAGG into a JS array
+    const data = rows.map(row => ({
+      ...row,
+      images: row.images ?? [],
+    }));
+
     res.status(200).json({
       success: true,
-      data: rows
+      data,
     });
+
   } catch (error) {
     console.error('Error fetching household data:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: 'Error fetching household data', 
-      error: error.message 
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching household data',
+      error: error.message,
     });
   }
-}
-
-
+};
