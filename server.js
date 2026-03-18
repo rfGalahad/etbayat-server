@@ -6,16 +6,18 @@ import authRoutes from './routes/authRoutes.js';
 import activityLogRoutes from './routes/activityLogRoutes.js';
 import postRoutes from './routes/postRoutes.js';
 import surveyRoutes from './routes/surveyRoutes.js';
-import duplicateRoutes from './routes/duplicateRoutes.js'
-import pwdIdApplicationRoutes from './routes/pwdIdApplicationRoutes.js'
-import spIdApplicationRoutes from './routes/spIdApplicationRoutes.js'
-import seniorIdApplicationRoutes from './routes/seniorIdApplicationRoutes.js'
-import hazardMapRoutes from './routes/hazardMapRoutes.js'
-import dashboardRoutes from './routes/dashboardRoutes.js'
-import databankRoutes from './routes/databankRoutes.js'
-import getAllIdInformationRoutes from './routes/idInformationRoutes.js'
-import printIdRoutes from './routes/printIdRoutes.js'
+import duplicateRoutes from './routes/duplicateRoutes.js';
+import pwdIdApplicationRoutes from './routes/pwdIdApplicationRoutes.js';
+import spIdApplicationRoutes from './routes/spIdApplicationRoutes.js';
+import seniorIdApplicationRoutes from './routes/seniorIdApplicationRoutes.js';
+import hazardMapRoutes from './routes/hazardMapRoutes.js';
+import dashboardRoutes from './routes/dashboardRoutes.js';
+import databankRoutes from './routes/databankRoutes.js';
+import getAllIdInformationRoutes from './routes/idInformationRoutes.js';
+import printIdRoutes from './routes/printIdRoutes.js';
+import backupRoutes from './routes/backupRoutes.js';
 
+import { apiLimiter } from './middlewares/rateLimiter.js';
 import { errorHandler } from './middlewares/errorHandler.js';
 
 // INITIALIZE EXPRESS APP
@@ -40,8 +42,10 @@ app.use(cors({
 app.use(express.json({ limit: '50mb' })); 
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
-// ROUTES
+// Apply basic rate limiting to all API routes
+app.use('/api', apiLimiter);
 
+// ROUTES
 app.use('/uploads', express.static('uploads'));
 
 app.use('/api/auth', authRoutes);
@@ -57,6 +61,7 @@ app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/databank', databankRoutes);
 app.use('/api/idInformation', getAllIdInformationRoutes);
 app.use('/api/printId', printIdRoutes);
+app.use('/api/backup', backupRoutes);
 
 app.use(errorHandler);
 
