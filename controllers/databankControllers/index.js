@@ -24,4 +24,4 @@ export { getOsyMasterlist } from './getOsyMasterlist.js'
 export { getFamilyDetailsById } from './getFamilyDetailsById.js'
 export { updateFamilyClass } from './updateFamilyClass.js'
 
-export { exportHouseholdPdf } from './getHousehold.js'
+export { exportHouseholdPdf } from './exportHouseholdPdf.js'
