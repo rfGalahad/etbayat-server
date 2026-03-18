@@ -321,6 +321,7 @@ export const exportHouseholdPdf = async (req, res) => {
     });
 
     // 6. Launch Puppeteer
+    console.log('[PDF] Launching Puppeteer...');
     browser = await puppeteer.launch({
       headless: 'new',
       args: [
@@ -329,10 +330,19 @@ export const exportHouseholdPdf = async (req, res) => {
         '--disable-dev-shm-usage',
       ],
     });
+    console.log('[PDF] Browser launched');
 
     const page = await browser.newPage();
 
+    // Log any browser-side console errors
+    page.on('console', msg => {
+      if (msg.type() === 'error') console.error('[PDF Browser]', msg.text());
+    });
+    page.on('pageerror', err => console.error('[PDF PageError]', err.message));
+
+    console.log('[PDF] Setting page content...');
     await page.setContent(html, { waitUntil: 'networkidle0', timeout: 120000 });
+    console.log('[PDF] Content set, generating PDF...');
 
     const pdfBuffer = await page.pdf({
       format:          'A4',
@@ -347,6 +357,7 @@ export const exportHouseholdPdf = async (req, res) => {
           <span><span class="pageNumber"></span> of <span class="totalPages"></span></span>
         </div>`,
     });
+    console.log('[PDF] PDF generated, buffer size:', pdfBuffer.length);
 
     await browser.close();
     browser = null;
@@ -363,11 +374,14 @@ export const exportHouseholdPdf = async (req, res) => {
 
   } catch (error) {
     if (browser) await browser.close();
-    console.error('Error generating household PDF:', error);
+    console.error('[PDF] Error generating household PDF:');
+    console.error('[PDF] Message:', error.message);
+    console.error('[PDF] Stack:', error.stack);
     res.status(500).json({
       success: false,
       message: 'Error generating PDF',
       error:   error.message,
+      stack:   error.stack,
     });
   }
 };
