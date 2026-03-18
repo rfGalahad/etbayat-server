@@ -5,6 +5,11 @@ import { activityLogger } from '../middlewares/activityLogger.js';
 
 const router = express.Router();
 
+router.get(
+  '/household/pdf', 
+  databankController.exportHouseholdPdf
+);
+
 // DATABANK
 router.get('/segregation', 
   authenticateToken, 
