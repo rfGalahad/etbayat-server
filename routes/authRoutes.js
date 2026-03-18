@@ -6,7 +6,10 @@ import { activityLogger } from '../middlewares/activityLogger.js';
 const router = express.Router();
 
 // LOGIN USER
-router.post('/login', authController.login);
+router.post(
+  '/login', 
+  authController.login
+);
 
 // FETCH ALL USERS
 router.get(

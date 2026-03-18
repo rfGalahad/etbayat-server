@@ -17,12 +17,10 @@ import getAllIdInformationRoutes from './routes/idInformationRoutes.js';
 import printIdRoutes from './routes/printIdRoutes.js';
 import backupRoutes from './routes/backupRoutes.js';
 
-import { apiLimiter } from './middlewares/rateLimiter.js';
 import { errorHandler } from './middlewares/errorHandler.js';
 
 // INITIALIZE EXPRESS APP
 const app = express();
-app.set('trust proxy', 1);
 const PORT = process.env.PORT || 3000;
 
 // MIDDLEWARE
@@ -42,9 +40,6 @@ app.use(cors({
 
 app.use(express.json({ limit: '50mb' })); 
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
-
-// Apply basic rate limiting to all API routes
-app.use('/api', apiLimiter);
 
 // ROUTES
 app.use('/uploads', express.static('uploads'));
