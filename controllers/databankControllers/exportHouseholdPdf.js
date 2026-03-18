@@ -367,10 +367,12 @@ export const exportHouseholdPdf = async (req, res) => {
     const barangayPrefix = barangay === 'all' ? 'All' : barangay;
     const filename       = `Household_Masterlist_${barangayPrefix}_${date}.pdf`;
 
-    res.setHeader('Content-Type',        'application/pdf');
+    // Do NOT set Content-Length — Express may re-encode the buffer if it's set
+    // Use res.send() so Express handles the binary buffer correctly
+    res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-    res.setHeader('Content-Length',      pdfBuffer.length);
-    res.end(pdfBuffer);
+    res.setHeader('Cache-Control', 'no-cache');
+    res.send(pdfBuffer);
 
   } catch (error) {
     if (browser) await browser.close();
