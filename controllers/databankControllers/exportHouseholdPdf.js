@@ -341,10 +341,24 @@ export const exportHouseholdPdf = async (req, res) => {
     page.on('pageerror', err => console.error('[PDF PageError]', err.message));
 
     console.log('[PDF] Setting page content...');
-    await page.setContent(html, { waitUntil: 'networkidle0', timeout: 120000 });
+    await page.setContent(html, { waitUntil: 'domcontentloaded', timeout: 30000 });
+    await page.evaluate(() => {
+    const imgs = [...document.querySelectorAll('img')];
+    return Promise.allSettled(
+      imgs.map(img =>
+        img.complete
+          ? Promise.resolve()
+          : new Promise(resolve => {
+              img.onload  = resolve;
+              img.onerror = resolve; // don't fail on broken images
+              setTimeout(resolve, 5000); // 5s max per image
+            })
+      )
+    );
+  });
     console.log('[PDF] Content set, generating PDF...');
 
-    const pdfBuffer = await page.pdf({
+    const pdfUint8  = await page.pdf({
       format:          'A4',
       landscape:       true,
       printBackground: true,
@@ -357,6 +371,8 @@ export const exportHouseholdPdf = async (req, res) => {
           <span><span class="pageNumber"></span> of <span class="totalPages"></span></span>
         </div>`,
     });
+    console.log('[PDF] type:', pdfUint8.constructor.name);
+    const pdfBuffer = Buffer.from(pdfUint8);
     console.log('[PDF] PDF generated, buffer size:', pdfBuffer.length);
 
     await browser.close();
