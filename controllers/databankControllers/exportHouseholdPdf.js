@@ -262,9 +262,14 @@ export const exportHouseholdPdf = async (req, res) => {
         h.house_condition AS houseCondition,
         h.street,
         h.barangay,
-        NULLIF(JSON_ARRAYAGG(hi.house_image_url), JSON_ARRAY(NULL)) AS images
+
+        (
+          SELECT JSON_ARRAYAGG(hi.house_image_url)
+          FROM house_images hi
+          WHERE hi.household_id = h.household_id
+        ) AS images
+
       FROM households h
-      LEFT JOIN house_images hi      ON hi.household_id = h.household_id
       LEFT JOIN family_information f ON h.household_id  = f.household_id
       LEFT JOIN population p         ON f.family_id     = p.family_id
       GROUP BY
