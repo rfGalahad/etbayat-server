@@ -247,18 +247,24 @@ const buildStyles = () => `
       flex-wrap: wrap;
       gap: 6px;
       align-items: center;
+      align-content: center;
       padding: 6px;
     }
     td.photos img {
       width: auto;
-      height: 250px;
+      height: 300px;
       object-fit: cover;
       border-radius: 3px;
       border: 0.5px solid #c5cfe8;
       display: block;
       flex-shrink: 0;
     }
-    .no-photo            { font-size: 7.5pt; color: #aaa; font-style: italic; }
+      
+    .no-photo { 
+      font-size: 7.5pt; 
+      color: #aaa; 
+      font-style: italic; 
+    }
 
     /* ── Print Hints ── */
     @media print {

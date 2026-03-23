@@ -264,7 +264,15 @@ export const getPwdIdApplicationById = async (req, res) => {
 
     const professionalInformation = professionalInformationRows[0] || {};
     const contactInformation = contactInformationRows[0] || {};
-    const disabilityInformation = disabilityInformationRows[0] || {};
+
+    const { disabilityType, ...disabilityValues } =  disabilityInformationRows[0] || {}; 
+    const disabilityInformation = {
+      ...disabilityValues,
+      disabilityType: (disabilityType || '')
+        .split(',')
+        .map(v => v.trim())  // remove extra spaces
+    };
+
     const governmentIds = governmentIdsRows[0] || {};
     const familyBackground = familyBackgroundRows[0] || {};
     const accomplishedBy = accomplishedByRows[0] || {};

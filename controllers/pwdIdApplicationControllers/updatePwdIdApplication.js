@@ -7,11 +7,12 @@ export const updatePwdIdApplication = async (req, res, next) => {
     const pwdId = req.params.pwdId;
     const files = req.files || {};
 
-    await updatePwdIdApplicationService(
+    await updatePwdIdApplicationService({
       formData,
-      pwdId,
+      oldPwdId: pwdId,
+      newPwdId: formData.personalInformation.pwdId,
       files
-    );
+    });
 
     return res.status(200).json({ 
       success: true,

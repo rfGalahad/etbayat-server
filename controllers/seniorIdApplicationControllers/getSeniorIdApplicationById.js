@@ -144,6 +144,7 @@ export const getSeniorIdApplicationById = async (req, res) => {
       success: true,
       data: {
         residentId : residentId,
+        seniorCitizenId: seniorCitizenId,
         personalInformation,
         professionalInformation,
         contactInformation,

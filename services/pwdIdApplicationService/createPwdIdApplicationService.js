@@ -481,7 +481,7 @@ export const upsertApplicantInformationData = async (
     [
       residentId,
       data.personalInformation.bloodType || null,
-      data.disabilityInformation.disabilityType,
+      data.disabilityInformation.disabilityType.join(','),
       data.disabilityInformation.disabilityCause,
       data.disabilityInformation.disabilitySpecific
     ]

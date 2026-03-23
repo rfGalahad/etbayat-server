@@ -51,6 +51,7 @@ export const getResidentInfo = async (req, res) => {
         [residentId]
       ),
 
+      // CONTACT INFORMATION
       connection.query(`
         SELECT
             h.street AS houseStreet,

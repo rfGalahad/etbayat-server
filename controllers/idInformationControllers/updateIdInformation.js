@@ -59,7 +59,7 @@ export const updateIdInformation = async (req, res) => {
     }
 
     if (oscaHeadName !== undefined) {
-      updates.push("osca_head_name = ?");
+      updates.push("osca_head = ?");
       values.push(oscaHeadName);
       changes.push("OSCA Head's Name");
     }
@@ -70,13 +70,13 @@ export const updateIdInformation = async (req, res) => {
     }
 
     if (mswdoOfficerName !== undefined) {
-      updates.push("mswdo_officer_name = ?");
+      updates.push("mswdo_officer = ?");
       values.push(mswdoOfficerName);
       changes.push("MSWDO Officer's Name");
     }
 
     if (mswdoOfficerSignature) {
-      updates.push("mswdo_officer_signature = ?");
+      updates.push("mswdo_signature = ?");
       values.push(mswdoOfficerSignature.url);
     }
 

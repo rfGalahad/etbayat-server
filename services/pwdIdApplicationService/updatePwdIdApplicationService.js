@@ -8,11 +8,12 @@ import {
 } from "./createPwdIdApplicationService.js";
 
 
-export const updatePwdIdApplicationService = async (
+export const updatePwdIdApplicationService = async ({
   formData,
-  pwdId,
+  oldPwdId,
+  newPwdId,
   files
-) => {
+}) => {
 
   const connection = await pool.getConnection();
 
@@ -48,14 +49,15 @@ export const updatePwdIdApplicationService = async (
       uploadedFiles.pwdPhotoId = await saveToLocal(
         files.pwdPhotoId[0].buffer,
         'pwd-id-applications/photo-id',
-        `photo-id-${pwdId}`,
+        `photo-id-${newPwdId}`,
         files.pwdPhotoId[0].mimetype
       );
 
       await connection.query(`
         UPDATE pwd_id_applications
         SET pwd_photo_id_url = ?
-      `, [uploadedFiles.pwdPhotoId.url])  
+        WHERE pwd_id = ?
+      `, [uploadedFiles.pwdPhotoId.url, newPwdId])  
     }
 
     // SIGNATURE
@@ -64,13 +66,14 @@ export const updatePwdIdApplicationService = async (
       uploadedFiles.pwdSignature = await saveToLocal(
         signatureBuffer,
         'pwd-id-applications/applicant-signatures',
-        `signature-${pwdId}.png`
+        `signature-${newPwdId}.png`
       );
 
       await connection.query(`
         UPDATE pwd_id_applications
         SET pwd_signature_url = ?
-      `, [uploadedFiles.pwdSignature.url]
+        WHERE pwd_id = ?
+      `, [uploadedFiles.pwdSignature.url, newPwdId]
     )
     }
 
@@ -79,7 +82,8 @@ export const updatePwdIdApplicationService = async (
     // UPDATE APPLICATION
 
     await updatePwdIdApplicationData(connection, {
-      pwdId,
+      oldPwdId,
+      newPwdId,
       otherInformation,
       familyBackground,
       accomplishedBy,
@@ -103,13 +107,13 @@ export const updatePwdIdApplicationService = async (
     /////////////////////////////////////////////////////////////////////
 
     await connection.commit();
-    return pwdId;
+    return newPwdId;
   } catch (error) {
     await connection.rollback();
 
     console.error('❌ Update failed:', {
       error: error.message,
-      pwdId,
+      newPwdId,
       timestamp: new Date().toISOString()
     });
 
@@ -214,21 +218,23 @@ export const updatePwdIdApplicationData = async (connection, data) => {
   // UPDATE PWD ID APPLICATION
   await connection.query(`
     UPDATE pwd_id_applications 
-    SET reporting_unit = ?,
+    SET pwd_id = ?,
+        reporting_unit = ?,
         control_number =  ?
     WHERE pwd_id = ?
   `,
     [
+      data.newPwdId,
       data.otherInformation.reportingUnit,
       data.otherInformation.controlNumber,
-      data.pwdId
+      data.oldPwdId
     ]
   );
 
   // FATHER
   await upsertPersonWithRole({
     connection,
-    pwdId: data.pwdId,
+    pwdId: data.newPwdId,
     roleTable: 'family_background',
     roleValue: 'Father',
     personData: {
@@ -242,7 +248,7 @@ export const updatePwdIdApplicationData = async (connection, data) => {
   // MOTHER
   await upsertPersonWithRole({
     connection,
-    pwdId: data.pwdId,
+    pwdId: data.newPwdId,
     roleTable: 'family_background',
     roleValue: 'Mother',
     personData: {
@@ -256,7 +262,7 @@ export const updatePwdIdApplicationData = async (connection, data) => {
   // GUARDIAN
   await upsertPersonWithRole({
     connection,
-    pwdId: data.pwdId,
+    pwdId: data.newPwdId,
     roleTable: 'family_background',
     roleValue: 'Guardian',
     personData: {
@@ -270,7 +276,7 @@ export const updatePwdIdApplicationData = async (connection, data) => {
   // UPDATE ACCOMPLISHED BY
   await upsertPersonWithRole({
     connection,
-    pwdId: data.pwdId,
+    pwdId: data.newPwdId,
     roleTable: 'accomplished_by',
     personData: {
       first_name: data.accomplishedBy.abFirstName,
@@ -286,7 +292,7 @@ export const updatePwdIdApplicationData = async (connection, data) => {
   // UPDATE CERTIFIED PHYSICIAN
   await upsertPersonWithRole({
     connection,
-    pwdId: data.pwdId,
+    pwdId: data.newPwdId,
     roleTable: 'physician',
     personData: {
       first_name: data.certifiedPhysician.cpFirstName,
@@ -302,7 +308,7 @@ export const updatePwdIdApplicationData = async (connection, data) => {
   // PROCESSING OFFICER
   await upsertPersonWithRole({
     connection,
-    pwdId: data.pwdId,
+    pwdId: data.newPwdId,
     roleTable: 'officers',
     roleValue: 'Processor',
     personData: {
@@ -316,7 +322,7 @@ export const updatePwdIdApplicationData = async (connection, data) => {
   // APPROVING OFFICER
   await upsertPersonWithRole({
     connection,
-    pwdId: data.pwdId,
+    pwdId: data.newPwdId,
     roleTable: 'officers',
     roleValue: 'Approver',
     personData: {
@@ -330,7 +336,7 @@ export const updatePwdIdApplicationData = async (connection, data) => {
   // ENCODER
   await upsertPersonWithRole({
     connection,
-    pwdId: data.pwdId,
+    pwdId: data.newPwdId,
     roleTable: 'officers',
     roleValue: 'Encoder',
     personData: {
