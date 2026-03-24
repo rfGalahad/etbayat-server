@@ -24,6 +24,7 @@ export const getAllIdInformation = async (req, res) => {
       mswdoOfficerSignaturePreview: getFileUrl(rows[0]?.mswdoOfficerSignaturePreview, req)
     }
 
+    console.log('ROWS', rows);
     console.log('DATA', data);
 
     res.status(200).json({
