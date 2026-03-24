@@ -44,51 +44,68 @@ export const updateIdInformation = async (req, res) => {
       changes.push("MSWDO Officer's Signature");
     }
 
-    const updates = [];
-    const values = [];
+    const fields = ["id"];
+    const placeholders = ["?"];
+    const insertValues = [1];
+
+    const updateClause = [];
 
     if (mayorName !== undefined) {
-      updates.push("mayor_name = ?");
-      values.push(mayorName);
+      fields.push("mayor_name");
+      placeholders.push("?");
+      insertValues.push(mayorName);
+      updateClause.push("mayor_name = VALUES(mayor_name)");
       changes.push("Mayor's Name");
     }
 
     if (mayorSignature) {
-      updates.push("mayor_signature = ?");
-      values.push(mayorSignature.url);
+      fields.push("mayor_signature");
+      placeholders.push("?");
+      insertValues.push(mayorSignature.url);
+      updateClause.push("mayor_signature = VALUES(mayor_signature)");
     }
 
     if (oscaHeadName !== undefined) {
-      updates.push("osca_head = ?");
-      values.push(oscaHeadName);
+      fields.push("osca_head");
+      placeholders.push("?");
+      insertValues.push(oscaHeadName);
+      updateClause.push("osca_head = VALUES(osca_head)");
       changes.push("OSCA Head's Name");
     }
 
     if (oscaHeadSignature) {
-      updates.push("osca_head_signature = ?");
-      values.push(oscaHeadSignature.url);
+      fields.push("osca_head_signature");
+      placeholders.push("?");
+      insertValues.push(oscaHeadSignature.url);
+      updateClause.push("osca_head_signature = VALUES(osca_head_signature)");
     }
 
     if (mswdoOfficerName !== undefined) {
-      updates.push("mswdo_officer = ?");
-      values.push(mswdoOfficerName);
+      fields.push("mswdo_officer");
+      placeholders.push("?");
+      insertValues.push(mswdoOfficerName);
+      updateClause.push("mswdo_officer = VALUES(mswdo_officer)");
       changes.push("MSWDO Officer's Name");
     }
 
     if (mswdoOfficerSignature) {
-      updates.push("mswdo_signature = ?");
-      values.push(mswdoOfficerSignature.url);
+      fields.push("mswdo_signature");
+      placeholders.push("?");
+      insertValues.push(mswdoOfficerSignature.url);
+      updateClause.push("mswdo_signature = VALUES(mswdo_signature)");
     }
 
-    if (updates.length === 0) {
+    if (fields.length === 1) {
       return res.status(400).json({ message: "No changes provided" });
     }
 
     await pool.query(
-      `UPDATE id_generator_information
-       SET ${updates.join(", ")}
-       WHERE id = 1`,
-      values
+      `
+      INSERT INTO id_generator_information (${fields.join(", ")})
+      VALUES (${placeholders.join(", ")})
+      ON DUPLICATE KEY UPDATE ${updateClause.join(", ")}
+      `,
+      insertValues
     );
 
     const actitivityLogMessage = `Updated ${changes.join(" and ")}`;
