@@ -6,7 +6,6 @@ import * as userModel from '../../models/userModel.js';
 export const login = async (req, res) => {
   try {
     const { username, password } = req.body;
-    console.log('req.ip:', req.ip);
     
     // FIND USER
     const user = await userModel.findUserByUsername(username);
