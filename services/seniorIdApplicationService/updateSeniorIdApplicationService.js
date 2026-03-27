@@ -47,6 +47,7 @@ export const updateSeniorIdApplicationService = async (
 
     // PHOTO ID
     if (files?.seniorCitizenPhotoId?.[0]) {
+      console.log('UPDATING PHOTO ID ...')
       uploadedFiles.seniorCitizenPhotoId = await saveToLocal(
         files.seniorCitizenPhotoId[0].buffer,
         'senior-citizen-id-applications/photo-id',
@@ -57,11 +58,13 @@ export const updateSeniorIdApplicationService = async (
       await connection.query(`
         UPDATE senior_citizen_id_applications
         SET senior_citizen_photo_id_url = ?
-      `, [uploadedFiles.seniorCitizenPhotoId.url])  
+        WHERE senior_citizen_id = ?
+      `, [uploadedFiles.seniorCitizenPhotoId.url, seniorCitizenId])  
     }
 
     // SIGNATURE
     if (isNewSignature) {
+      console.log('UPDATING SIGNATURE....')
       const signatureBuffer = base64ToBuffer(seniorCitizenMedia.seniorCitizenSignature);
       uploadedFiles.seniorCitizenSignature = await saveToLocal(
         signatureBuffer,
@@ -72,7 +75,8 @@ export const updateSeniorIdApplicationService = async (
       await connection.query(`
         UPDATE senior_citizen_id_applications
         SET senior_citizen_signature_url = ?
-      `, [uploadedFiles.seniorCitizenSignature.url]
+        WHERE senior_citizen_id = ?
+      `, [uploadedFiles.seniorCitizenSignature.url, seniorCitizenId]
       )
     }
     
@@ -120,24 +124,6 @@ export const updateSeniorIdApplicationService = async (
 
 export const updateSeniorIdApplicationData = async (connection, data) => {
   
-  // SENIOR CITIZEN ID APPLICATION
-  await connection.query(
-    `UPDATE senior_citizen_id_applications
-     SET
-      senior_citizen_photo_id_url = ?,
-      senior_citizen_photo_id_public_id = ?,
-      senior_citizen_signature_url = ?,
-      senior_citizen_signature_public_id = ?
-     WHERE senior_citizen_id = ?`,
-    [
-      data.seniorCitizenPhotoId?.url || null,
-      data.seniorCitizenPhotoId?.publicId || null,
-      data.seniorCitizenSignature?.url || null,
-      data.seniorCitizenSignature?.publicId || null,
-      data.seniorCitizenId
-    ]
-  );
-
   // UPDATE OSCA INFORMATION
   await connection.query(`
     UPDATE osca_information 

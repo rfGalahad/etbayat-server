@@ -58,7 +58,8 @@ export const updateSpIdApplicationService = async (
       await connection.query(`
         UPDATE solo_parent_id_applications
         SET solo_parent_photo_id_url = ?
-      `, [uploadedFiles.soloParentPhotoId.url])  
+        WHERE solo_parent_id = ?
+      `, [uploadedFiles.soloParentPhotoId.url, soloParentId])  
     }
 
     // SIGNATURE
@@ -73,7 +74,8 @@ export const updateSpIdApplicationService = async (
       await connection.query(`
         UPDATE solo_parent_id_applications
         SET solo_parent_signature_url = ?
-      `, [uploadedFiles.soloParentSignature.url]
+        WHERE solo_parent_id = ?
+      `, [uploadedFiles.soloParentSignature.url, soloParentId]
       )
     }
     
@@ -122,30 +124,6 @@ export const updateSpIdApplicationService = async (
 }
 
 export const updateSpIdApplicationData = async (connection, data) => {
-  
-  // SOLO PARENT ID APPLICATION
-  await connection.query(
-    `UPDATE solo_parent_id_applications
-     SET
-      pantawid_beneficiary = ?,
-      beneficiary_code = ?,
-      household_id = ?,
-      indigenous_person = ?,
-      indigenous_affiliation = ?,
-      lgbtq = ?,
-      pwd = ?
-     WHERE solo_parent_id = ?`,
-    [
-      data.personalInformation.pantawidBeneficiary,
-      data.personalInformation.beneficiaryCode,
-      data.personalInformation.householdId,
-      data.personalInformation.indigenousPerson,
-      data.personalInformation.indigenousAffiliation,
-      data.personalInformation.lgbtq,
-      data.personalInformation.pwd,
-      data.soloParentId
-    ]
-  );
 
   // DELETE existing household composition
   await connection.query(

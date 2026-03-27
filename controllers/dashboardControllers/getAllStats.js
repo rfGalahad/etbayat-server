@@ -3,8 +3,8 @@ import pool from '../../config/db.js';
 export const getAllStats = async (req, res) => {
   try {
     const { role, barangay } = req.user;
+    
     const isBarangaySecretary = role === 'Barangay Secretary';
-
     const params = isBarangaySecretary ? [barangay] : [];
 
     const query = `
@@ -75,10 +75,16 @@ export const getAllStats = async (req, res) => {
 
     const [rows] = await pool.query(query, params);
 
-    res.status(200).json({ success: true, data: rows });
-
+    res.status(200).json({ 
+      success: true, 
+      data: rows 
+    });
   } catch (error) {
     console.error('Error fetching stats:', error);
-    res.status(500).json({ success: false, message: 'Error fetching stats', error: error.message });
+    res.status(500).json({ 
+      success: false, 
+      message: 'Error fetching stats', 
+      error: error.message 
+    });
   }
 };
