@@ -264,6 +264,7 @@ export const insertSeniorIdApplicationData = async (connection, data) => {
     formatDateForMySQL(member.birthdate),
     member.civilStatus,
     member.occupation || null,
+    member.otherOccupation || null,
     parseIncome(member.annualIncome)
   ]);
 
@@ -279,6 +280,7 @@ export const insertSeniorIdApplicationData = async (connection, data) => {
       birthdate,
       civil_status,
       occupation,
+      other_occupation,
       annual_income
     ) VALUES ?`,
     [values]

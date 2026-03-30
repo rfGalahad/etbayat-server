@@ -94,6 +94,7 @@ export const getSeniorIdApplicationById = async (req, res) => {
           DATE_FORMAT(birthdate, '%m-%d-%Y') AS birthdate,
           civil_status AS civilStatus,
           occupation,
+          other_occupation AS otherOccupation,
           annual_income AS annualIncome
         FROM family_composition
         WHERE senior_citizen_id = ?`,

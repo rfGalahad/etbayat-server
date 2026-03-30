@@ -1,13 +1,3 @@
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname  = path.dirname(__filename);
-
-const OUTPUT_DIR = path.join(__dirname, '../../public/id-cards');
-
-
 // ─── CSV Builders ────────────────────────────────────────────────────────────
 
 const buildPwdCsv = (data, fullName) => {
@@ -45,15 +35,17 @@ const buildSoloParentCsv = (data, fullName) => {
   const dependents = data.dependents || [];
 
   // Build header dynamically
-  let header = 'Solo_Parent_Id_Number,Name,Date_Place_Of_Birth,Address,Solo_Parent_Category,Benefit_Qualification_Code';
+  let header = 'Solo_Parent_Id_Number,Photo_Id,Signature,Name,Date_Place_Of_Birth,Address,Solo_Parent_Category,Benefit_Qualification_Code';
 
   for (let i = 1; i <= 8; i++) {
     header += `,Name_${i},Age_${i},Birthdate_${i},Relationship_${i}`;
   }
 
-  // Base row
+  // ROW
   let row = [
     data.soloParentId || '',
+    data.photoUrl,
+    data.signatureUrl,
     fullName,
     `${formatBirthdate(data.birthdate) || ''} ${clean(data.birthplace) || ''}`,
     data.address || '',
@@ -61,7 +53,7 @@ const buildSoloParentCsv = (data, fullName) => {
     data.benefitCode || ''
   ];
 
-  // Add dependents
+  // DEPENDENTS/CHILDREN
   for (let i = 0; i < 8; i++) {
     const d = dependents[i];
 
@@ -94,7 +86,6 @@ const CSV_BUILDERS = {
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 const clean = (val) => (val || '').replace(/,/g, '');
-const safe = (val) => `"${val || ''}"`;
  
 const formatBirthdate = (dateStr) => {
   if (!dateStr) return '';
@@ -119,20 +110,6 @@ const buildFilename = (lastName, idType, timestamp, ext) => {
   const sanitized = (lastName || 'ID').replace(/[^a-z0-9]/gi, '_').toLowerCase();
   return `${sanitized.toUpperCase()}_${idType}.${ext}`;
 };
-
-const ensureOutputDir = () => {
-  if (!fs.existsSync(OUTPUT_DIR)) {
-    fs.mkdirSync(OUTPUT_DIR, { recursive: true });
-  }
-};
-
-const saveIdCardImage = (imageData, filename) => {
-  const base64Data = imageData.replace(/^data:image\/\w+;base64,/, '');
-  const buffer     = Buffer.from(base64Data, 'base64');
-  ensureOutputDir();
-  fs.writeFileSync(path.join(OUTPUT_DIR, filename), buffer);
-};
-
 
 // ─── Controller ──────────────────────────────────────────────────────────────
 
@@ -160,7 +137,6 @@ export const printId = async (req, res, next) => {
     // Save image backup to VPS
     const imgFilename = buildFilename(data.lastName, idType, timestamp, 'png');
     const csvFilename = buildFilename(data.lastName, idType, timestamp, 'txt');
-    saveIdCardImage(imageData, imgFilename);
 
     return res.status(201).json({
       success: true,

@@ -124,6 +124,7 @@ export const getSpIdApplicationById = async (req, res) => {
           civil_status AS civilStatus,
           educational_attainment AS educationalAttainment,
           occupation,
+          other_occupation AS otherOccupation,
           monthly_income AS monthlyIncome
         FROM household_composition
         WHERE solo_parent_id = ?`,

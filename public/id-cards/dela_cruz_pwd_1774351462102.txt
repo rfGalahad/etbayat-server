@@ -1,2 +1,0 @@
-Name,Disability,PwdIdNumber
-JUAN SANTOSA DELA CRUZ SR,Rare Disease (RA 10747), Cancer (RA 11215),02-0902-000-0000007

@@ -301,6 +301,7 @@ export const insertSpIdApplicationData = async (connection, data) => {
     member.civilStatus,
     member.educationalAttainment,
     member.occupation || null,
+    member.otherOccupation || null,
     parseIncome(member.monthlyIncome)
   ]);
 
@@ -317,6 +318,7 @@ export const insertSpIdApplicationData = async (connection, data) => {
       civil_status,
       educational_attainment,
       occupation,
+      other_occupation,
       monthly_income
     ) VALUES ?`,
     [values]
