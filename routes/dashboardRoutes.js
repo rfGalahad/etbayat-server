@@ -5,6 +5,12 @@ import { authenticateToken } from '../middlewares/auth.js';
 
 const router = express.Router();
 
+// ARCHIVE DATA
+router.post('/archive',
+  authenticateToken,
+  dashboardController.archiveData
+);
+
 // GET ALL STATS
 router.get('/stats', 
   authenticateToken, 
