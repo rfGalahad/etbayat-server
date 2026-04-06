@@ -39,7 +39,7 @@ export const createSeniorIdApplicationService = async (
     seniorCitizenMedia
   } = formData
 
-  const seniorCitizenId = `SC-${await generateSeniorId(connection)}`;
+  const seniorCitizenId = formData.personalInformation.seniorCitizenId;
 
   try {
     await connection.beginTransaction();

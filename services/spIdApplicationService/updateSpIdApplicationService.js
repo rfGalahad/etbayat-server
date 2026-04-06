@@ -14,11 +14,12 @@ import {
 } from './createSpIdApplicationService.js';
 
 
-export const updateSpIdApplicationService = async (
+export const updateSpIdApplicationService = async ({
   formData,
-  soloParentId,
+  oldSoloParentId,
+  newSoloParentId,
   files
-) => {
+}) => {
 
   const connection = await pool.getConnection();
 
@@ -51,7 +52,7 @@ export const updateSpIdApplicationService = async (
       uploadedFiles.soloParentPhotoId = await saveToLocal(
         files.soloParentPhotoId[0].buffer,
         'solo-parent-id-applications/photo-id',
-        `photo-id-${soloParentId}`,
+        `photo-id-${newSoloParentId}`,
         files.soloParentPhotoId[0].mimetype
       );
 
@@ -59,7 +60,7 @@ export const updateSpIdApplicationService = async (
         UPDATE solo_parent_id_applications
         SET solo_parent_photo_id_url = ?
         WHERE solo_parent_id = ?
-      `, [uploadedFiles.soloParentPhotoId.url, soloParentId])  
+      `, [uploadedFiles.soloParentPhotoId.url, newSoloParentId])  
     }
 
     // SIGNATURE
@@ -68,14 +69,14 @@ export const updateSpIdApplicationService = async (
       uploadedFiles.soloParentSignature = await saveToLocal(
         signatureBuffer,
         'solo-parent-id-applications/applicant-signatures',
-        `signature-${soloParentId}.png`
+        `signature-${newSoloParentId}.png`
       );
 
       await connection.query(`
         UPDATE solo_parent_id_applications
         SET solo_parent_signature_url = ?
         WHERE solo_parent_id = ?
-      `, [uploadedFiles.soloParentSignature.url, soloParentId]
+      `, [uploadedFiles.soloParentSignature.url, newSoloParentId]
       )
     }
     
@@ -85,7 +86,8 @@ export const updateSpIdApplicationService = async (
 
     await updateSpIdApplicationData(connection, {
       residentId,
-      soloParentId,
+      oldSoloParentId,
+      newSoloParentId,
       personalInformation,
       householdComposition,
       problemNeeds,
@@ -107,13 +109,13 @@ export const updateSpIdApplicationService = async (
     /////////////////////////////////////////////////////////////////////
 
     await connection.commit();
-    return soloParentId;
+    return newSoloParentId;
   } catch (error) {
     await connection.rollback();
 
     console.error('❌ Update failed:', {
       error: error.message,
-      soloParentId,
+      newSoloParentId,
       timestamp: new Date().toISOString()
     });
 
@@ -124,16 +126,64 @@ export const updateSpIdApplicationService = async (
 }
 
 export const updateSpIdApplicationData = async (connection, data) => {
+  
+  // UPDATE APPLICATION DATA
+  await connection.query(`
+    UPDATE solo_parent_id_applications 
+    SET solo_parent_id = ?,
+        pantawid_beneficiary = ?,
+        beneficiary_code = ?,
+        household_id = ?,
+        indigenous_person = ?,
+        indigenous_affiliation = ?,
+        lgbtq = ?,
+        renewal_date = ?
+    WHERE solo_parent_id = ?
+  `,
+    [
+      data.newSoloParentId,
+      data.personalInformation.pantawidBeneficiary,
+      data.personalInformation.beneficiaryCode,
+      data.personalInformation.householdId,
+      data.personalInformation.indigenousPerson,
+      data.personalInformation.indigenousAffiliation,
+      data.personalInformation.lgbtq,
+      formatDateForMySQL(data.personalInformation.renewalDate),
+      data.oldSoloParentId
+    ]
+  );
+
+  if (data.personalInformation.pwd) {
+    await connection.query(`
+      INSERT INTO social_classification (
+        resident_id, 
+        classification_code, 
+        classification_name
+      ) VALUES (?, ?, ?)
+      ON DUPLICATE KEY UPDATE
+        classification_code = VALUES(classification_code),
+        classification_name = VALUES(classification_name)
+    `, [
+      data.residentId, 
+      'PWD', 
+      'Person with Disability'
+    ]);
+  } else {
+    await connection.query(`
+      DELETE FROM social_classification 
+      WHERE resident_id = ? AND classification_code = 'PWD'
+    `, [data.residentId]);
+  }
 
   // DELETE existing household composition
   await connection.query(
     `DELETE FROM household_composition WHERE solo_parent_id = ?`,
-    [data.soloParentId]
+    [data.newSoloParentId]
   );
 
   // RE-INSERT household composition
   const values = data.householdComposition.map(member => [
-    data.soloParentId,
+    data.newSoloParentId,
     member.firstName,
     member.middleName || null,
     member.lastName,
@@ -177,7 +227,7 @@ export const updateSpIdApplicationData = async (connection, data) => {
     [
       data.problemNeeds.causeSoloParent,
       data.problemNeeds.needsSoloParent,
-      data.soloParentId
+      data.newSoloParentId
     ]
   );
 
@@ -197,7 +247,7 @@ export const updateSpIdApplicationData = async (connection, data) => {
       data.emergencyContact.contactNumber,
       data.emergencyContact.houseStreet,
       data.emergencyContact.barangay,
-      data.soloParentId
+      data.newSoloParentId
     ]
   );
 };

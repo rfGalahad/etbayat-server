@@ -6,11 +6,12 @@ export const updateSeniorIdApplication = async (req, res, next) => {
     const seniorCitizenId = req.params.seniorCitizenId;
     const files = req.files || {};
     
-    await updateSeniorIdApplicationService(
+    await updateSeniorIdApplicationService({
       formData,
-      seniorCitizenId,
+      oldSeniorCitizenId: seniorCitizenId,
+      newSeniorCitizenId: formData?.personalInformation?.seniorCitizenId ?? seniorCitizenId,
       files
-    );
+    });
 
     return res.status(200).json({ 
       success: true,

@@ -11,7 +11,8 @@ export const getPwdIdApplicationById = async (req, res) => {
     // GET RESIDENT ID
     const [pwdIdApplicationRows] = await connection.query(
       `SELECT 
-        resident_id as residentId
+        resident_id as residentId,
+        DATE_FORMAT(renewal_date, '%m-%d-%Y') as renewalDate
       FROM pwd_id_applications
       WHERE pwd_id = ?`,
       [pwdId]
@@ -259,7 +260,8 @@ export const getPwdIdApplicationById = async (req, res) => {
 
     const personalInformation = {
       ...(personalInformationRows[0] || {}),
-      pwdId
+      pwdId,
+      renewalDate: pwdIdApplicationRows[0]?.renewalDate
     };
 
     const professionalInformation = professionalInformationRows[0] || {};

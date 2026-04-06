@@ -12,7 +12,8 @@ export const getSpIdApplicationById = async (req, res) => {
     const [soloParentIdApplicationRows] = await connection.query(
       `SELECT 
         created_at as createdAt,
-        resident_id as residentId
+        resident_id as residentId,
+        renewal_date as renewalDate
       FROM solo_parent_id_applications
       WHERE solo_parent_id = ?`,
       [soloParentId]
@@ -66,13 +67,18 @@ export const getSpIdApplicationById = async (req, res) => {
             WHEN pa.lgbtq = 1
             THEN TRUE
             ELSE FALSE
-          END,
+          END AS lgbtq,
 
           CASE
-            WHEN pa.pwd = 1
+            WHEN EXISTS (
+              SELECT 1
+              FROM social_classification sc
+              WHERE sc.resident_id = p.resident_id
+                AND sc.classification_code = 'PWD'
+            )
             THEN TRUE
             ELSE FALSE
-          END
+          END AS pwd
 
         FROM population p
         LEFT JOIN government_ids g
@@ -179,7 +185,10 @@ export const getSpIdApplicationById = async (req, res) => {
     const validUntil = new Date(soloParentIdApplicationRows[0].createdAt);
     validUntil.setFullYear(validUntil.getFullYear() + 1);
 
-    const personalInformation = personalInformationRows[0] || {};
+    const personalInformation = {
+      ...(personalInformationRows[0] || {}),
+      renewalDate: soloParentIdApplicationRows[0]?.renewalDate
+    };
     const professionalInformation = professionalInformationRows[0] || {};
     const contactInformation = contactInformationRows[0] || {};
     const problemNeeds = problemNeedsRows[0] || {};

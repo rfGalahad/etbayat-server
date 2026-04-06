@@ -1,4 +1,5 @@
 import pool from "../../config/db.js";
+import { formatDateForMySQL } from "../../utils/dateUtils.js";
 import { 
   base64ToBuffer,
   saveToLocal 
@@ -84,6 +85,7 @@ export const updatePwdIdApplicationService = async ({
     await updatePwdIdApplicationData(connection, {
       oldPwdId,
       newPwdId,
+      personalInformation,
       otherInformation,
       familyBackground,
       accomplishedBy,
@@ -215,18 +217,23 @@ const upsertPersonWithRole = async ({
 }
 
 export const updatePwdIdApplicationData = async (connection, data) => {
+
+  console.log('RENEWAL DATE:', data?.personalInformation?.renewalDate);
+    
   // UPDATE PWD ID APPLICATION
   await connection.query(`
     UPDATE pwd_id_applications 
     SET pwd_id = ?,
         reporting_unit = ?,
-        control_number =  ?
+        control_number =  ?,
+        renewal_date = ?
     WHERE pwd_id = ?
   `,
     [
       data.newPwdId,
       data.otherInformation.reportingUnit,
       data.otherInformation.controlNumber,
+      data.personalInformation.renewalDate ? formatDateForMySQL(data.personalInformation.renewalDate) : null,
       data.oldPwdId
     ]
   );

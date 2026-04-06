@@ -1,3 +1,7 @@
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
 // ─── CSV Builders ────────────────────────────────────────────────────────────
 
 const buildPwdCsv = (data, fullName) => {
@@ -6,8 +10,8 @@ const buildPwdCsv = (data, fullName) => {
     fullName,
     data.disabilityType  || '',
     data.pwdId           || '',
-    data.photoUrl        || '',
-    data.signatureUrl    || '',
+    '{PHOTO_PATH}',
+    '{SIGNATURE_PATH}',
   ].join(',');
 
   return { header, row };
@@ -20,8 +24,8 @@ const buildSeniorCitizenCsv = (data, fullName) => {
     formatBirthdate(data.birthdate),
     data.sex               || '',
     data.seniorCitizenId   || '',
-    data.photoUrl          || '',
-    data.signatureUrl      || '',
+    '{PHOTO_PATH}',
+    '{SIGNATURE_PATH}',
     data.mayorName         || '',
     data.mayorSignature    || '',
     data.oscaHead          || '',
@@ -34,18 +38,16 @@ const buildSeniorCitizenCsv = (data, fullName) => {
 const buildSoloParentCsv = (data, fullName) => {
   const dependents = data.dependents || [];
 
-  // Build header dynamically
   let header = 'Solo_Parent_Id_Number,Photo_Id,Signature,Name,Date_Place_Of_Birth,Address,Solo_Parent_Category,Benefit_Qualification_Code';
 
   for (let i = 1; i <= 8; i++) {
     header += `,Name_${i},Age_${i},Birthdate_${i},Relationship_${i}`;
   }
 
-  // ROW
   let row = [
     data.soloParentId || '',
-    data.photoUrl,
-    data.signatureUrl,
+    '{PHOTO_PATH}',
+    '{SIGNATURE_PATH}',
     fullName,
     `${formatBirthdate(data.birthdate) || ''} ${clean(data.birthplace) || ''}`,
     data.address || '',
@@ -53,27 +55,16 @@ const buildSoloParentCsv = (data, fullName) => {
     data.benefitCode || ''
   ];
 
-  // DEPENDENTS/CHILDREN
   for (let i = 0; i < 8; i++) {
     const d = dependents[i];
-
     if (d) {
-      row.push(
-        d.name || '',
-        d.age || '',
-        formatBirthdate(d.birthdate) || '',
-        d.relationship || ''
-      );
+      row.push(d.name || '', d.age || '', formatBirthdate(d.birthdate) || '', d.relationship || '');
     } else {
-      // Fill empty if no dependent
       row.push('', '', '', '');
     }
   }
 
-  return {
-    header,
-    row: row.join(',')
-  };
+  return { header, row: row.join(',') };
 };
 
 const CSV_BUILDERS = {
@@ -82,21 +73,18 @@ const CSV_BUILDERS = {
   soloParent: buildSoloParentCsv,
 };
 
- 
+
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 const clean = (val) => (val || '').replace(/,/g, '');
- 
+
 const formatBirthdate = (dateStr) => {
   if (!dateStr) return '';
-
   const [month, day, year] = dateStr.split('-');
-
   const months = [
     'January','February','March','April','May','June',
     'July','August','September','October','November','December'
   ];
-
   return `${months[parseInt(month, 10) - 1]} ${parseInt(day, 10)} ${year}`;
 };
 
@@ -111,7 +99,49 @@ const buildFilename = (lastName, idType, timestamp, ext) => {
   return `${sanitized.toUpperCase()}_${idType}.${ext}`;
 };
 
+/**
+ * Converts a URL like http://localhost:3000/uploads/path/to/file.png
+ * into an absolute file path on disk, then returns { data, mimeType }.
+ * Returns null if the file doesn't exist or the URL can't be resolved.
+ */
+
+
+const urlToBase64 = (url, uploadsRoot) => {
+  if (!url) return null;
+
+  try {
+    // Strip origin (http://localhost:3000) to get the URL path
+    const urlPath = url.replace(/^https?:\/\/[^/]+/, '');
+
+    // Strip leading /uploads/ prefix — adjust if your static mount differs
+    const relativePath = urlPath.replace(/^\/uploads\//, '');
+
+    const absolutePath = path.join(uploadsRoot, relativePath);
+
+    if (!fs.existsSync(absolutePath)) {
+      console.warn(`[printId] File not found on disk: ${absolutePath}`);
+      return null;
+    }
+
+    const buffer   = fs.readFileSync(absolutePath);
+    const ext      = path.extname(absolutePath).toLowerCase().replace('.', '');
+    const mimeType = ext === 'jpg' ? 'image/jpeg' : `image/${ext || 'png'}`;
+
+    return { data: buffer.toString('base64'), mimeType };
+  } catch (err) {
+    console.error(`[printId] Failed to read file for URL ${url}:`, err.message);
+    return null;
+  }
+};
+
+
 // ─── Controller ──────────────────────────────────────────────────────────────
+
+// Absolute path to your uploads folder on the VPS.
+// Adjust this to wherever Express serves /uploads from.
+
+const __dirname    = path.dirname(fileURLToPath(import.meta.url));
+const UPLOADS_ROOT = path.join(__dirname, '..', '..', 'uploads');   // ← adjust if needed
 
 export const printId = async (req, res, next) => {
   try {
@@ -126,28 +156,33 @@ export const printId = async (req, res, next) => {
       return res.status(400).json({ success: false, message: `Unsupported idType: ${idType}` });
     }
 
-    const data     = typeof applicantData === 'string' ? JSON.parse(applicantData) : applicantData;
-    const fullName = buildFullName(data);
+    const data      = typeof applicantData === 'string' ? JSON.parse(applicantData) : applicantData;
+    const fullName  = buildFullName(data);
     const timestamp = Date.now();
 
-    // Build CSV
+    // ── Read image files from disk and encode as base64 ──────────────────────
+    const photo     = urlToBase64(data.photoUrl,     UPLOADS_ROOT);
+    const signature = urlToBase64(data.signatureUrl, UPLOADS_ROOT);
+
+    // ── Build CSV with placeholders ──────────────────────────────────────────
     const { header, row } = buildCsv(data, fullName);
     const csvContent      = `${header}\n${row}`;
 
-    // Save image backup to VPS
-    const imgFilename = buildFilename(data.lastName, idType, timestamp, 'png');
     const csvFilename = buildFilename(data.lastName, idType, timestamp, 'txt');
+    const imgFilename = buildFilename(data.lastName, idType, timestamp, 'png');
 
     return res.status(201).json({
       success: true,
       message: 'ID card ready for printing',
       data: {
-        csvContent,
+        csvContent,   // still contains {PHOTO_PATH} and {SIGNATURE_PATH}
         csvFilename,
         imgFilename,
         idType,
         applicantName: fullName,
         timestamp,
+        photo,        // { data: '<base64>', mimeType: 'image/png' } | null
+        signature,    // { data: '<base64>', mimeType: 'image/png' } | null
       },
     });
 

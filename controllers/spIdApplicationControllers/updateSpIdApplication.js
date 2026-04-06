@@ -6,11 +6,12 @@ export const updateSpIdApplication = async (req, res, next) => {
     const soloParentId = req.params.soloParentId;
     const files = req.files || {};
 
-    await updateSpIdApplicationService(
+    await updateSpIdApplicationService({
       formData,
-      soloParentId,
+      oldSoloParentId: soloParentId,
+      newSoloParentId: formData?.personalInformation?.soloParentId ?? soloParentId,
       files
-    );
+    });
 
     return res.status(200).json({ 
       success: true,

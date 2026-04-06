@@ -11,7 +11,7 @@ export const getAllPopulation = async (req, res) => {
       JOIN households h ON f.household_id = h.household_id
       JOIN surveys s ON f.survey_id = s.survey_id
       WHERE p.resident_id LIKE 'RID%'
-        AND YEAR(s.created_at) = YEAR(CURDATE())
+        AND YEAR(s.updated_at) = YEAR(CURDATE())
       GROUP BY h.barangay
       ORDER BY h.barangay;
     `);

@@ -8,7 +8,9 @@ export const getAllPwdIdApplications = async (req, res) => {
           COALESCE(pwd.pwd_id, '') AS pwdId,
           CONCAT_WS(' ', p.first_name, p.middle_name, p.last_name, p.suffix) AS name,
           COALESCE(ci.barangay, h.barangay) AS barangay,
-          pwd.created_at AS createdAt
+          pwd.created_at AS createdAt,
+          pwd.updated_at AS updatedAt,
+          pwd.renewal_date AS renewalDate
       FROM population p
       INNER JOIN social_classification sc 
           ON p.resident_id = sc.resident_id

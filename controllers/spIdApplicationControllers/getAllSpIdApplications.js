@@ -8,7 +8,8 @@ export const getAllSpIdApplications = async (req, res) => {
           COALESCE(sp.solo_parent_id, '') AS soloParentId,
           CONCAT_WS(' ', p.first_name, p.middle_name, p.last_name, p.suffix) AS name,
           COALESCE(ci.barangay, h.barangay) AS barangay,
-          sp.created_at AS createdAt
+          sp.created_at AS createdAt,
+          sp.renewal_date AS renewalDate
       FROM population p
       INNER JOIN social_classification sc 
           ON p.resident_id = sc.resident_id

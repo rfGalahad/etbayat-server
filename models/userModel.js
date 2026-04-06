@@ -42,7 +42,7 @@ export const updateUserPassword = async (userID, hashedPassword) => {
   const [result] = await pool.query(
     `
       UPDATE users 
-      SET password = ? 
+      SET password = ?,
           password_changed_at = NOW(),
           must_change_password = 0
       WHERE user_id = ?

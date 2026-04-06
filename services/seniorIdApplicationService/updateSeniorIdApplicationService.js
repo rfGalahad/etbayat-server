@@ -14,11 +14,15 @@ import {
 } from '../../utils/fileUtils.js';
 
 
-export const updateSeniorIdApplicationService = async (
+export const updateSeniorIdApplicationService = async ({
   formData,
-  seniorCitizenId,
+  oldSeniorCitizenId,
+  newSeniorCitizenId,
   files
-) => {
+}) => {
+
+  console.log('OLD ID:', oldSeniorCitizenId);
+  console.log('NEW ID:', newSeniorCitizenId);
 
   const connection = await pool.getConnection();
 
@@ -51,7 +55,7 @@ export const updateSeniorIdApplicationService = async (
       uploadedFiles.seniorCitizenPhotoId = await saveToLocal(
         files.seniorCitizenPhotoId[0].buffer,
         'senior-citizen-id-applications/photo-id',
-        `photo-id-${seniorCitizenId}`,
+        `photo-id-${newSeniorCitizenId}`,
         files.seniorCitizenPhotoId[0].mimetype
       );
 
@@ -59,7 +63,7 @@ export const updateSeniorIdApplicationService = async (
         UPDATE senior_citizen_id_applications
         SET senior_citizen_photo_id_url = ?
         WHERE senior_citizen_id = ?
-      `, [uploadedFiles.seniorCitizenPhotoId.url, seniorCitizenId])  
+      `, [uploadedFiles.seniorCitizenPhotoId.url, newSeniorCitizenId])  
     }
 
     // SIGNATURE
@@ -69,14 +73,14 @@ export const updateSeniorIdApplicationService = async (
       uploadedFiles.seniorCitizenSignature = await saveToLocal(
         signatureBuffer,
         'senior-citizen-id-applications/applicant-signatures',
-        `signature-${seniorCitizenId}.png`
+        `signature-${newSeniorCitizenId}.png`
       );
 
       await connection.query(`
         UPDATE senior_citizen_id_applications
         SET senior_citizen_signature_url = ?
         WHERE senior_citizen_id = ?
-      `, [uploadedFiles.seniorCitizenSignature.url, seniorCitizenId]
+      `, [uploadedFiles.seniorCitizenSignature.url, newSeniorCitizenId]
       )
     }
     
@@ -86,7 +90,8 @@ export const updateSeniorIdApplicationService = async (
 
     await updateSeniorIdApplicationData(connection, {
       residentId,
-      seniorCitizenId,
+      oldSeniorCitizenId,
+      newSeniorCitizenId,
       oscaInformation,
       familyComposition
     });
@@ -106,13 +111,13 @@ export const updateSeniorIdApplicationService = async (
     /////////////////////////////////////////////////////////////////////
 
     await connection.commit();
-    return seniorCitizenId;
+    return newSeniorCitizenId;
   } catch (error) {
     await connection.rollback();
 
     console.error('❌ Update failed:', {
       error: error.message,
-      seniorCitizenId,
+      seniorCitizenId: newSeniorCitizenId,
       timestamp: new Date().toISOString()
     });
 
@@ -123,6 +128,19 @@ export const updateSeniorIdApplicationService = async (
 }
 
 export const updateSeniorIdApplicationData = async (connection, data) => {
+
+  // UPDATE APPLICATION DATA
+  await connection.query(`
+    UPDATE senior_citizen_id_applications 
+    SET senior_citizen_id = ?,
+        updated_at = CURRENT_TIMESTAMP
+    WHERE senior_citizen_id = ?
+  `,
+    [
+      data.newSeniorCitizenId,
+      data.oldSeniorCitizenId
+    ]
+  );
   
   // UPDATE OSCA INFORMATION
   await connection.query(`
@@ -135,19 +153,19 @@ export const updateSeniorIdApplicationData = async (connection, data) => {
       data.oscaInformation.associationName || null,
       formatDateForMySQL(data.oscaInformation.dateElectedAsOfficer) || null,
       data.oscaInformation.position,
-      data.seniorCitizenId,
+      data.newSeniorCitizenId,
     ]
   );
 
   // DELETE existing family composition
   await connection.query(
     `DELETE FROM family_composition WHERE senior_citizen_id = ?`,
-    [data.seniorCitizenId]
+    [data.newSeniorCitizenId]
   );
 
   // RE-INSERT family composition
   const values = data.familyComposition.map(member => [
-    data.seniorCitizenId,
+    data.newSeniorCitizenId,
     member.firstName,
     member.middleName || null,
     member.lastName,

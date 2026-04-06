@@ -143,8 +143,9 @@ export const insertPwdIdApplicationData = async (
       pwd_photo_id_url,
       pwd_signature_url,
       reporting_unit,
-      control_number
-    ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      control_number,
+      renewal_date
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       data.pwdId,
       data.userId,
@@ -152,7 +153,8 @@ export const insertPwdIdApplicationData = async (
       data.pwdPhotoId?.url || null,
       data.pwdSignature?.url || null,
       data.otherInformation.reportingUnit,
-      data.otherInformation.controlNumber
+      data.otherInformation.controlNumber,
+      data.personalInformation.renewalDate ? formatDateForMySQL(data.personalInformation.renewalDate) : null
     ]
   );
 

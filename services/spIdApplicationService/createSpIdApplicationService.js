@@ -40,7 +40,7 @@ export const createSpIdApplicationService = async (
     soloParentMedia
   } = formData
 
-  const soloParentId = `SP-${await generateSoloParentId(connection)}`;
+  const soloParentId = personalInformation?.soloParentId;
 
   try {
     await connection.beginTransaction();
@@ -270,7 +270,7 @@ export const insertSpIdApplicationData = async (connection, data) => {
       indigenous_person,
       indigenous_affiliation,
       lgbtq,
-      pwd
+      renewal_date
     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       data.soloParentId,
@@ -284,7 +284,7 @@ export const insertSpIdApplicationData = async (connection, data) => {
       data.personalInformation.indigenousPerson,
       data.personalInformation.indigenousAffiliation,
       data.personalInformation.lgbtq,
-      data.personalInformation.pwd
+      formatDateForMySQL(data.personalInformation.renewalDate)
     ]
   );
 
