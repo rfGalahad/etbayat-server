@@ -41,9 +41,10 @@ export const getPwd = async (req, res) => {
           ON p.resident_id = ci.resident_id
       JOIN social_classification sc 
           ON p.resident_id = sc.resident_id
-      WHERE sc.classification_code = 'PWD'
       LEFT JOIN pwd_id_applications sp 
-          ON p.resident_id = sp.resident_id;
+          ON p.resident_id = sp.resident_id
+    WHERE sc.classification_code = 'PWD'
+      
     `);
     
     res.status(200).json({
