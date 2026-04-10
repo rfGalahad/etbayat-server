@@ -276,10 +276,12 @@ const buildStyles = () => `
 
 const buildHouseholdRow = (household, rowIndex) => {
   const photoHtml = household.images.length > 0
-    ? household.images
-        .map(url => `<img src="${url}" alt="house photo" onerror="this.style.display='none'" />`)
-        .join('')
-    : '<span class="no-photo">No photos</span>';
+  ? household.images
+      .map(url => `<img src="${url}" alt="house photo" 
+        onerror="this.style.display='none'; checkAllImagesHidden(this.parentElement)" />`)
+      .join('') +
+      `<span class="no-photo img-fallback" style="display:none">Photos unavailable</span>`
+  : '<span class="no-photo">No photos</span>';
 
   return `
     <tr class="">
@@ -329,8 +331,8 @@ const buildHtml = (householdsByBarangay, headerInfo) => {
   } = headerInfo;
 
   const barangayLabel  = barangayFilter === 'all'
-    ? 'ALL BARANGAYS'
-    : barangayFilter.toUpperCase();
+    ? 'Itbayat'
+    : `Barangay ${barangayFilter.toUpperCase()}`;
 
   const barangaySections = Object.entries(householdsByBarangay)
     .map(([name, households]) => buildBarangaySection(name, households))
@@ -341,6 +343,16 @@ const buildHtml = (householdsByBarangay, headerInfo) => {
     <head>
       <meta charset="UTF-8" />
       ${buildStyles()}
+      <script>
+        function checkAllImagesHidden(cell) {
+          const imgs = cell.querySelectorAll('img');
+          const allHidden = [...imgs].every(img => img.style.display === 'none');
+          if (allHidden) {
+            const fallback = cell.querySelector('.img-fallback');
+            if (fallback) fallback.style.display = 'inline';
+          }
+        }
+      </script>
     </head>
     <body>
 
@@ -350,9 +362,8 @@ const buildHtml = (householdsByBarangay, headerInfo) => {
         </div>
         <div class="title-block">
           <p class="org">Municipality of Itbayat</p>
-          <h1>HOUSEHOLD MASTERLIST</h1>
-          <p class="brgy">Barangay ${barangayLabel}</p>
-          <p class="meta">Date Generated: ${generatedDate} &nbsp;|&nbsp; Structure: ${structureLabel}</p>
+          <h1>HOUSEHOLD MASTERLIST OF ${barangayLabel}</h1>
+          <p class="meta">${generatedDate}</p>
         </div>
         <div class="logo-box right">
           ${itbayatLogo ? `<img src="${itbayatLogo}" alt="Itbayat Logo" />` : ''}
@@ -379,8 +390,6 @@ const buildFooterTemplate = (totalRecords) => `
   ">
     <span>
       Total records: ${totalRecords}
-      &nbsp;|&nbsp; Prepared by: Barangay Secretary
-      &nbsp;|&nbsp; Certified true and correct
     </span>
     <span>
       <span class="pageNumber"></span> of <span class="totalPages"></span>
@@ -394,8 +403,6 @@ const buildFooterTemplate = (totalRecords) => `
 // ─────────────────────────────────────────────────────────────────────────────
 
 export const exportHouseholdPdf = async (req, res) => {
-
-  console.log('EXPORTING...');
 
   let browser;
 
