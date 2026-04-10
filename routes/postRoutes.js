@@ -24,7 +24,6 @@ router.get('/',
 
 // GET POST BY ID
 router.get('/:postId', 
-  authenticateToken, 
   postController.getPostById
 );
 

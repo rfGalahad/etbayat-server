@@ -6,6 +6,11 @@ export const getPopulation = async (req, res) => {
       SELECT 
         p.resident_id AS residentId,
 
+        p.last_name AS lastName,
+        p.first_name AS firstName,
+        p.middle_name AS middleName,
+        p.suffix AS suffix,
+
         CONCAT(
           p.last_name, ', ',
           p.first_name,
@@ -15,6 +20,60 @@ export const getPopulation = async (req, res) => {
 
         p.sex,
         DATE_FORMAT(p.birthdate, '%m-%d-%Y') AS birthdate,
+        p.relation_to_family_head AS relationToFamilyHead,
+        p.civil_status AS civilStatus,
+        
+        pi.educational_attainment AS educationalAttainment,
+        pi.employment_status AS employmentStatus,
+        pi.occupation,
+
+        ci.contact_number AS contactNumber,
+
+        gi.philhealth AS philhealthId,
+
+        (
+          SELECT sp.solo_parent_id
+          FROM solo_parent_id_applications sp
+          WHERE sp.resident_id = p.resident_id
+            AND sp.solo_parent_id IS NOT NULL
+          LIMIT 1
+        ) AS soloParentId,
+
+        (
+          SELECT sp.senior_citizen_id
+          FROM senior_citizen_id_applications sp
+          WHERE sp.resident_id = p.resident_id
+            AND sp.senior_citizen_id IS NOT NULL
+          LIMIT 1
+        ) AS seniorCitizenId,
+
+        (
+          SELECT sp.pwd_id
+          FROM pwd_id_applications sp
+          WHERE sp.resident_id = p.resident_id
+            AND sp.pwd_id IS NOT NULL
+          LIMIT 1
+        ) AS pwdId,
+
+        CASE 
+          WHEN EXISTS (
+            SELECT 1 
+            FROM social_classification sc 
+            WHERE sc.resident_id = p.resident_id
+            AND sc.classification_code = 'OSY'
+          ) THEN TRUE
+          ELSE FALSE
+        END AS isOsy,
+
+        CASE 
+          WHEN EXISTS (
+            SELECT 1 
+            FROM social_classification sc 
+            WHERE sc.resident_id = p.resident_id
+            AND sc.classification_code = 'IS'
+          ) THEN TRUE
+          ELSE FALSE
+        END AS isInSchool,
 
         CASE 
           WHEN EXISTS (
@@ -77,6 +136,9 @@ export const getPopulation = async (req, res) => {
         
       FROM population p
       JOIN family_information fi ON p.family_id = fi.family_id
+      JOIN professional_information pi ON p.resident_id = pi.resident_id
+      JOIN contact_information ci ON ci.resident_id = p.resident_id
+      JOIN government_ids gi ON p.resident_id = gi.resident_id
       JOIN households hi ON fi.household_id = hi.household_id
       WHERE p.resident_id LIKE 'RID%'
       ORDER BY name ASC;

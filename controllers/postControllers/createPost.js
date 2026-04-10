@@ -4,7 +4,7 @@ import cloudinary from '../../config/cloudinary.js';
 
 export const createPost = async (req, res) => {
   try {
-    const { userID, postTitle, postDescription } = req.body;
+    const { userID, postType, postTitle, postDescription } = req.body;
 
     // INSERT IMAGE TO CLOUDINARY
     const base64 = `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}`;
@@ -14,9 +14,9 @@ export const createPost = async (req, res) => {
 
     await pool.query(
       `INSERT INTO posts 
-       (user_id, post_title, post_description, post_thumbnail_url, post_thumbnail_id) 
-       VALUES (?, ?, ?, ?, ?)`,
-      [ userID, postTitle, postDescription, result.secure_url, result.public_id ]  
+       (user_id, post_type, post_title, post_description, post_thumbnail_url, post_thumbnail_id) 
+       VALUES (?, ?, ?, ?, ?, ?)`,
+      [ userID, postType, postTitle, postDescription, result.secure_url, result.public_id ]  
     );
 
     res.status(201).json({ 
