@@ -274,14 +274,17 @@ const buildStyles = () => `
   </style>
 `;
 
-const buildHouseholdRow = (household, rowIndex) => {
+const buildHouseholdRow = (household, rowIndex, baseUrl) => {
   const photoHtml = household.images.length > 0
-  ? household.images
-      .map(url => `<img src="${url}" alt="house photo" 
-        onerror="this.style.display='none'; checkAllImagesHidden(this.parentElement)" />`)
-      .join('') +
-      `<span class="no-photo img-fallback" style="display:none">Photos unavailable</span>`
-  : '<span class="no-photo">No photos</span>';
+    ? household.images
+        .map(url => {
+          const fullUrl = url.startsWith('http') ? url : `${baseUrl}${url}`;
+          return `<img src="${fullUrl}" alt="house photo"
+            onerror="this.style.display='none'; checkAllImagesHidden(this.parentElement)" />`;
+        })
+        .join('') +
+        `<span class="no-photo img-fallback" style="display:none">Photos unavailable</span>`
+    : '<span class="no-photo">No photos</span>';
 
   return `
     <tr class="">
@@ -296,8 +299,8 @@ const buildHouseholdRow = (household, rowIndex) => {
   `;
 };
 
-const buildBarangaySection = (barangayName, households) => {
-  const rows = households.map(buildHouseholdRow).join('');
+const buildBarangaySection = (barangayName, households, baseUrl) => {
+   const rows = households.map((hh, i) => buildHouseholdRow(hh, i, baseUrl)).join('');
 
   return `
     <div class="barangay-section">
@@ -322,20 +325,14 @@ const buildBarangaySection = (barangayName, households) => {
 
 const buildHtml = (householdsByBarangay, headerInfo) => {
 
-  const { 
-    generatedDate, 
-    barangayFilter, 
-    structureLabel, 
-    mswdoLogo, 
-    itbayatLogo 
-  } = headerInfo;
+  const { generatedDate, barangayFilter, structureLabel, mswdoLogo, itbayatLogo, baseUrl } = headerInfo;
 
   const barangayLabel  = barangayFilter === 'all'
     ? 'Itbayat'
     : `Barangay ${barangayFilter.toUpperCase()}`;
 
   const barangaySections = Object.entries(householdsByBarangay)
-    .map(([name, households]) => buildBarangaySection(name, households))
+    .map(([name, households]) => buildBarangaySection(name, households, baseUrl))
     .join('');
 
   return `<!DOCTYPE html>
@@ -447,6 +444,7 @@ export const exportHouseholdPdf = async (req, res) => {
       structureLabel,
       mswdoLogo:      encodeLogoAsBase64('mswdoLogo.png'),
       itbayatLogo:    encodeLogoAsBase64('itbayatLogo.png'),
+      baseUrl:        `${req.protocol}://${req.get('host')}`,  // ← add this
     };
 
 
