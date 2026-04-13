@@ -489,7 +489,8 @@ export const getSurveyByIdService = async (surveyId) => {
     
     return data;              
   } catch (error) {
-    console.error('Error getting survey!');
+    console.error('Error getting survey!', error); // log full error
+    throw error
   } finally {
     connection.release();
   }
