@@ -99,7 +99,8 @@ export const getFamily = async (req, res) => {
             ee.total_education,
             fxe.total_family,
             me.total_monthly,
-            lv.livestock_list;
+            lv.livestock_list
+        ORDER BY fh.last_name ASC, fh.first_name ASC;
     `);
     
     res.status(200).json({

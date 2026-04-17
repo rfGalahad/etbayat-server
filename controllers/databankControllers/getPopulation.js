@@ -135,10 +135,10 @@ export const getPopulation = async (req, res) => {
         hi.barangay
         
       FROM population p
-      JOIN family_information fi ON p.family_id = fi.family_id
-      JOIN professional_information pi ON p.resident_id = pi.resident_id
-      JOIN contact_information ci ON ci.resident_id = p.resident_id
-      JOIN government_ids gi ON p.resident_id = gi.resident_id
+      LEFT JOIN family_information fi ON p.family_id = fi.family_id
+      LEFT JOIN professional_information pi ON p.resident_id = pi.resident_id
+      LEFT JOIN contact_information ci ON ci.resident_id = p.resident_id
+      LEFT JOIN government_ids gi ON p.resident_id = gi.resident_id
       JOIN households hi ON fi.household_id = hi.household_id
       WHERE p.resident_id LIKE 'RID%'
       ORDER BY name ASC;
