@@ -100,7 +100,7 @@ export const getFamily = async (req, res) => {
             fxe.total_family,
             me.total_monthly,
             lv.livestock_list
-        ORDER BY fh.last_name ASC, fh.first_name ASC;
+        ORDER BY LOWER(fh.last_name) ASC, LOWER(fh.first_name) ASC
     `);
     
     res.status(200).json({
