@@ -15,7 +15,11 @@ export const getWomenMasterlist = async (req, res) => {
           TIMESTAMPDIFF(YEAR, p.birthdate, CURDATE()) AS age,
           pi.educational_attainment AS educationalAttainment,
           pi.skills,
-          pi.occupation,
+          CASE
+              WHEN pi.occupation = 'Others' 
+                  THEN pi.other_occupation
+              ELSE pi.occupation
+          END AS occupation,
           h.barangay AS barangay,
 
           CASE

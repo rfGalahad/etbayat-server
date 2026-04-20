@@ -16,7 +16,12 @@ export const getSeniorCitizenMasterlist = async (req, res) => {
           p.sex,
           pi.educational_attainment AS educationalAttainment,
           pi.skills AS skills,
-          pi.occupation AS occupation,
+          
+          CASE
+              WHEN pi.occupation = 'Others' 
+                  THEN pi.other_occupation
+              ELSE pi.occupation
+          END AS occupation,
 
           CASE
               WHEN EXISTS (

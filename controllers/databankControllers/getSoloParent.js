@@ -33,7 +33,12 @@ export const getSoloParent = async (req, res) => {
           r.sex,
 
           pi.educational_attainment as educationalAttainment,
-          pi.occupation,
+          
+          CASE
+              WHEN pi.occupation = 'Others' 
+                  THEN pi.other_occupation
+              ELSE pi.occupation
+          END AS occupation,
 
           sp.solo_parent_id as soloParentId,
           h.barangay,

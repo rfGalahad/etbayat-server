@@ -4,46 +4,48 @@ export const getPwd = async (req, res) => {
   try {
     const [rows] = await pool.query(`
       SELECT
-          p.resident_id AS residentId,
-          CONCAT(
-              p.last_name, ', ',
-              p.first_name,
-              IFNULL(CONCAT(' ', p.middle_name), ''),
-              IFNULL(CONCAT(' ', p.suffix), '')
-          ) AS name,
+        p.resident_id AS residentId,
+        CONCAT(
+            p.last_name, ', ',
+            p.first_name,
+            IFNULL(CONCAT(' ', p.middle_name), ''),
+            IFNULL(CONCAT(' ', p.suffix), '')
+        ) AS name,
 
-          DATE_FORMAT(p.birthdate, '%m-%d-%Y') AS birthdate,
-          TIMESTAMPDIFF(YEAR, p.birthdate, CURDATE()) AS age,
-          p.sex,
-          pi.educational_attainment AS educationalAttainment,
-          pi.skills,
+        DATE_FORMAT(p.birthdate, '%m-%d-%Y') AS birthdate,
+        TIMESTAMPDIFF(YEAR, p.birthdate, CURDATE()) AS age,
+        p.sex,
+        pi.educational_attainment AS educationalAttainment,
+        pi.skills,
 
-          CASE
-              WHEN pi.occupation IS NULL OR pi.occupation = 'None'
-                  THEN 'Dependent'
-              ELSE pi.occupation
-          END AS occupation,
+        CASE
+            WHEN pi.occupation IS NULL OR pi.occupation = 'None'
+                THEN 'Dependent'
+            ELSE pi.occupation
+        END AS occupation,
 
-          hi.disability_type,
-          sp.pwd_id AS pwdId,
-          COALESCE(h.barangay, ci.barangay) AS barangay
+        hi.disability_type AS disability,
+        sp.pwd_id AS pwdId,
+        COALESCE(h.barangay, ci.barangay) AS barangay
 
-      FROM population p
-      LEFT JOIN professional_information pi 
-          ON pi.resident_id = p.resident_id
-      LEFT JOIN health_information hi 
-          ON hi.resident_id = p.resident_id
-      LEFT JOIN family_information f 
-          ON f.family_id = p.family_id
-      LEFT JOIN households h 
-          ON f.household_id = h.household_id
-      LEFT JOIN contact_information ci 
-          ON p.resident_id = ci.resident_id
-      JOIN social_classification sc 
-          ON p.resident_id = sc.resident_id
-      LEFT JOIN pwd_id_applications sp 
-          ON p.resident_id = sp.resident_id
+    FROM population p
+    LEFT JOIN professional_information pi 
+        ON pi.resident_id = p.resident_id
+    LEFT JOIN health_information hi 
+        ON hi.resident_id = p.resident_id
+    LEFT JOIN family_information f 
+        ON f.family_id = p.family_id
+    LEFT JOIN households h 
+        ON f.household_id = h.household_id
+    LEFT JOIN contact_information ci 
+        ON p.resident_id = ci.resident_id
+    JOIN social_classification sc 
+        ON p.resident_id = sc.resident_id
+    LEFT JOIN pwd_id_applications sp 
+        ON p.resident_id = sp.resident_id
+
     WHERE sc.classification_code = 'PWD'
+    AND p.resident_id LIKE 'RID%';
       
     `);
     

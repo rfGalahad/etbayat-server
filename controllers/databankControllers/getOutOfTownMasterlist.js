@@ -14,7 +14,11 @@ export const getOutOfTownMasterlist = async (req, res) => {
           DATE_FORMAT(p.birthdate, '%m-%d-%Y') AS birthdate,
           pi.educational_attainment AS educationalAttainment,
           pi.skills AS skills,
-          pi.occupation AS occupation,
+          CASE
+              WHEN pi.occupation = 'Others' 
+                  THEN pi.other_occupation
+              ELSE pi.occupation
+          END AS occupation,
           h.barangay AS barangay
       FROM population p
       INNER JOIN social_classification sc

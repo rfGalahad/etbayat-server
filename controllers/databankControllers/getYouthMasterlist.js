@@ -19,6 +19,8 @@ export const getYouthMasterlist = async (req, res) => {
 
           /* OCCUPATION RULE */
           CASE
+              WHEN pi.occupation = 'Others' THEN pi.other_occupation
+
               WHEN (pi.occupation IS NULL OR pi.occupation = 'None')
                   AND EXISTS (
                       SELECT 1
@@ -27,6 +29,7 @@ export const getYouthMasterlist = async (req, res) => {
                         AND sc2.classification_code = 'IS'
                   )
               THEN 'Student'
+
               ELSE pi.occupation
           END AS occupation,
 

@@ -25,7 +25,11 @@ export const getPopulation = async (req, res) => {
         
         pi.educational_attainment AS educationalAttainment,
         pi.employment_status AS employmentStatus,
-        pi.occupation,
+        CASE
+            WHEN pi.occupation = 'Others' 
+                THEN pi.other_occupation
+            ELSE pi.occupation
+        END AS occupation,
 
         ci.contact_number AS contactNumber,
 
