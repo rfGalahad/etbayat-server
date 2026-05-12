@@ -2,8 +2,7 @@ import pool from '../../config/db.js';
 import bcrypt from 'bcryptjs';
 
 const adjectives = [
-  "Itbayat", "Ruther", "Vunung", "Pawpaw", "Kester",
-  "Kiko", "Hangtay", "Venes", "Tatus", "Smart"
+  "Itbayat",  "Vunung", "Pawpaw", "Hangtay", "Venes", "Tatus", "Smart"
 ];
 
 const nouns = [

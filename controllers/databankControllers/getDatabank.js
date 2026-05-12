@@ -244,7 +244,8 @@ export const getOsySummary = async (req, res) => {
       JOIN households h 
         ON fi.household_id = h.household_id
       WHERE sc.classification_code = 'OSY'
-      GROUP BY barangay_group
+      AND TIMESTAMPDIFF(YEAR, p.birthdate, CURDATE()) BETWEEN 15 AND 24
+      GROUP BY barangay_group 
       ORDER BY barangay_group;
     `);
     
@@ -255,3 +256,280 @@ export const getOsySummary = async (req, res) => {
     return res.status(500).json({ message: 'Internal server error' });
   }
 };
+
+export const getWomenSummary = async (req, res) => {
+  try {
+    const [rows] = await pool.query(`
+      SELECT 
+        CASE 
+          WHEN h.sitio_yawran = 1 THEN 'Yawran'
+          ELSE h.barangay
+        END AS barangay_group,
+        SUM(CASE WHEN pi.occupation IS NOT NULL AND pi.occupation != 'None' THEN 1 ELSE 0 END) AS working,
+        SUM(CASE WHEN pi.occupation IS NULL OR pi.occupation = 'None' THEN 1 ELSE 0 END) AS non_working,
+        SUM(CASE WHEN pi.skills IS NOT NULL AND pi.skills != 'None' THEN 1 ELSE 0 END) AS skilled,
+        SUM(CASE WHEN pi.skills IS NULL OR pi.skills = 'None' THEN 1 ELSE 0 END) AS unskilled,
+        COUNT(*) AS total
+      FROM population p
+      LEFT JOIN professional_information pi
+        ON p.resident_id = pi.resident_id
+      JOIN family_information fi 
+        ON p.family_id = fi.family_id
+      JOIN households h 
+        ON fi.household_id = h.household_id
+      WHERE p.sex = 'Female'
+      GROUP BY barangay_group 
+      ORDER BY barangay_group;
+    `);
+    
+    return res.status(200).json({ data: rows });
+
+  } catch (error) {
+    console.error('Error getting women summary:', error);
+    return res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
+export const getSoloParentSummary = async (req, res) => {
+  try {
+    const [rows] = await pool.query(`
+      SELECT 
+        CASE 
+          WHEN h.sitio_yawran = 1 THEN 'Yawran'
+          ELSE h.barangay
+        END AS barangay_group,
+        SUM(CASE WHEN p.sex = 'Male' THEN 1 ELSE 0 END) AS male_solo_parent,
+        SUM(CASE WHEN p.sex = 'Female' THEN 1 ELSE 0 END) AS female_solo_parent,
+        COUNT(*) AS total_solo_parent,
+        SUM(CASE WHEN sp.solo_parent_id IS NOT NULL THEN 1 ELSE 0 END) AS with_solo_parent_id
+      FROM social_classification sc
+      JOIN population p 
+        ON sc.resident_id = p.resident_id
+      JOIN family_information fi 
+        ON p.family_id = fi.family_id
+      JOIN households h 
+        ON fi.household_id = h.household_id
+      LEFT JOIN solo_parent_id_applications sp
+        ON p.resident_id = sp.resident_id
+      WHERE sc.classification_code = 'SP'
+      GROUP BY barangay_group 
+      ORDER BY barangay_group;
+    `);
+    
+    return res.status(200).json({ data: rows });
+
+  } catch (error) {
+    console.error('Error getting solo parent summary:', error);
+    return res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
+export const getPwdSummary = async (req, res) => {
+  try {
+    const [rows] = await pool.query(`
+      SELECT 
+        CASE 
+          WHEN h.sitio_yawran = 1 THEN 'Yawran'
+          ELSE h.barangay
+        END AS barangay_group,
+        SUM(CASE WHEN p.sex = 'Male' THEN 1 ELSE 0 END) AS male_pwd,
+        SUM(CASE WHEN p.sex = 'Female' THEN 1 ELSE 0 END) AS female_pwd,
+        COUNT(*) AS total_pwd
+      FROM social_classification sc
+      JOIN population p 
+        ON sc.resident_id = p.resident_id
+      JOIN family_information fi 
+        ON p.family_id = fi.family_id
+      JOIN households h 
+        ON fi.household_id = h.household_id
+      WHERE sc.classification_code = 'PWD'
+      GROUP BY barangay_group 
+      ORDER BY barangay_group;
+    `);
+    
+    return res.status(200).json({ data: rows });
+
+  } catch (error) {
+    console.error('Error getting average family size:', error);
+    return res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
+export const getPwdCategory = async (req, res) => {
+  try {
+    const [rows] = await pool.query(`
+      SELECT 
+        CASE 
+          WHEN h.sitio_yawran = 1 THEN 'Yawran'
+          ELSE h.barangay
+        END AS barangay_group,
+        SUM(CASE WHEN pi.occupation IS NOT NULL AND pi.occupation != 'None' THEN 1 ELSE 0 END) AS working,
+        SUM(CASE WHEN pi.occupation IS NULL OR pi.occupation = 'None' THEN 1 ELSE 0 END) AS non_working,
+        SUM(CASE WHEN pi.skills IS NOT NULL AND pi.skills != 'None' THEN 1 ELSE 0 END) AS skilled,
+        SUM(CASE WHEN pi.skills IS NULL OR pi.skills = 'None' THEN 1 ELSE 0 END) AS unskilled,
+        COUNT(*) AS total
+      FROM social_classification sc
+      JOIN population p 
+        ON sc.resident_id = p.resident_id
+      LEFT JOIN professional_information pi
+        ON p.resident_id = pi.resident_id
+      JOIN family_information fi 
+        ON p.family_id = fi.family_id
+      JOIN households h 
+        ON fi.household_id = h.household_id
+      WHERE sc.classification_code = 'PWD'
+      GROUP BY barangay_group 
+      ORDER BY barangay_group;
+    `);
+    
+    return res.status(200).json({ data: rows });
+
+  } catch (error) {
+    console.error('Error getting PWD category:', error);
+    return res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
+export const getPwdByDisability = async (req, res) => {
+  try {
+    const [rows] = await pool.query(`
+      SELECT 
+        CASE 
+          WHEN h.sitio_yawran = 1 THEN 'Yawran'
+          ELSE h.barangay
+        END AS barangay_group,
+        
+        hi.disability_type,
+
+        -- Age 0-4
+        SUM(CASE WHEN p.sex = 'Male'   AND TIMESTAMPDIFF(YEAR, p.birthdate, CURDATE()) BETWEEN 0  AND 4  THEN 1 ELSE 0 END) AS male_0_4,
+        SUM(CASE WHEN p.sex = 'Female' AND TIMESTAMPDIFF(YEAR, p.birthdate, CURDATE()) BETWEEN 0  AND 4  THEN 1 ELSE 0 END) AS female_0_4,
+
+        -- Age 5-18
+        SUM(CASE WHEN p.sex = 'Male'   AND TIMESTAMPDIFF(YEAR, p.birthdate, CURDATE()) BETWEEN 5  AND 18 THEN 1 ELSE 0 END) AS male_5_18,
+        SUM(CASE WHEN p.sex = 'Female' AND TIMESTAMPDIFF(YEAR, p.birthdate, CURDATE()) BETWEEN 5  AND 18 THEN 1 ELSE 0 END) AS female_5_18,
+
+        -- Age 19-59
+        SUM(CASE WHEN p.sex = 'Male'   AND TIMESTAMPDIFF(YEAR, p.birthdate, CURDATE()) BETWEEN 19 AND 59 THEN 1 ELSE 0 END) AS male_19_59,
+        SUM(CASE WHEN p.sex = 'Female' AND TIMESTAMPDIFF(YEAR, p.birthdate, CURDATE()) BETWEEN 19 AND 59 THEN 1 ELSE 0 END) AS female_19_59,
+
+        -- Age 60+
+        SUM(CASE WHEN p.sex = 'Male'   AND TIMESTAMPDIFF(YEAR, p.birthdate, CURDATE()) >= 60 THEN 1 ELSE 0 END) AS male_60_above,
+        SUM(CASE WHEN p.sex = 'Female' AND TIMESTAMPDIFF(YEAR, p.birthdate, CURDATE()) >= 60 THEN 1 ELSE 0 END) AS female_60_above,
+
+        -- Total
+        SUM(CASE WHEN p.sex = 'Male'   THEN 1 ELSE 0 END) AS male_total,
+        SUM(CASE WHEN p.sex = 'Female' THEN 1 ELSE 0 END) AS female_total,
+        COUNT(*) AS grand_total
+
+      FROM social_classification sc
+      JOIN population p
+        ON sc.resident_id = p.resident_id
+      JOIN family_information fi
+        ON p.family_id = fi.family_id
+      JOIN households h
+        ON fi.household_id = h.household_id
+      JOIN health_information hi
+        ON p.resident_id = hi.resident_id
+      WHERE sc.classification_code = 'PWD'
+      AND hi.disability_type IS NOT NULL
+      GROUP BY barangay_group, hi.disability_type
+      ORDER BY barangay_group, hi.disability_type;
+    `);
+    
+    return res.status(200).json({ data: rows });
+
+  } catch (error) {
+    console.error('Error getting PWD by disability:', error);
+    return res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
+export const getNonIvatanSummary = async (req, res) => {
+  try {
+    const [rows] = await pool.query(`
+      SELECT 
+        CASE 
+          WHEN h.sitio_yawran = 1 THEN 'Yawran'
+          ELSE h.barangay
+        END AS barangay_group,
+        SUM(CASE WHEN p.sex = 'Male' THEN 1 ELSE 0 END) AS male_non_ivatan,
+        SUM(CASE WHEN p.sex = 'Female' THEN 1 ELSE 0 END) AS female_non_ivatan,
+        COUNT(*) AS total_non_ivatan
+      FROM social_classification sc
+      JOIN population p 
+        ON sc.resident_id = p.resident_id
+      JOIN family_information fi 
+        ON p.family_id = fi.family_id
+      JOIN households h 
+        ON fi.household_id = h.household_id
+      WHERE sc.classification_code = 'PWD'
+      GROUP BY barangay_group 
+      ORDER BY barangay_group;
+    `);
+    
+    return res.status(200).json({ data: rows });
+
+  } catch (error) {
+    console.error('Error getting average family size:', error);
+    return res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
+export const getSeniorCitizenSummary = async (req, res) => {
+  try {
+    const [rows] = await pool.query(`
+      SELECT 
+        CASE 
+          WHEN h.sitio_yawran = 1 THEN 'Yawran'
+          ELSE h.barangay
+        END AS barangay_group,
+
+        -- Total counts
+        SUM(CASE WHEN p.sex = 'Male' THEN 1 ELSE 0 END) AS male,
+        SUM(CASE WHEN p.sex = 'Female' THEN 1 ELSE 0 END) AS female,
+        COUNT(*) AS total,
+
+        -- With Social Pension
+        SUM(CASE WHEN p.sex = 'Male' AND pi.receiving_pension = 1 AND pi.pension_type = 'Social Pension' THEN 1 ELSE 0 END) AS male_social_pension,
+        SUM(CASE WHEN p.sex = 'Female' AND pi.receiving_pension = 1 AND pi.pension_type = 'Social Pension' THEN 1 ELSE 0 END) AS female_social_pension,
+        SUM(CASE WHEN pi.receiving_pension = 1 AND pi.pension_type = 'Social Pension' THEN 1 ELSE 0 END) AS total_social_pension,
+
+        -- With Government Pension
+        SUM(CASE WHEN p.sex = 'Male' AND pi.receiving_pension = 1 AND pi.pension_type = 'Government Pension' THEN 1 ELSE 0 END) AS male_government_pension,
+        SUM(CASE WHEN p.sex = 'Female' AND pi.receiving_pension = 1 AND pi.pension_type = 'Government Pension' THEN 1 ELSE 0 END) AS female_government_pension,
+        SUM(CASE WHEN pi.receiving_pension = 1 AND pi.pension_type = 'Government Pension' THEN 1 ELSE 0 END) AS total_government_pension,
+
+        -- With Senior Citizen ID
+        SUM(CASE WHEN p.sex = 'Male' AND sc_app.senior_citizen_id IS NOT NULL THEN 1 ELSE 0 END) AS male_with_id,
+        SUM(CASE WHEN p.sex = 'Female' AND sc_app.senior_citizen_id IS NOT NULL THEN 1 ELSE 0 END) AS female_with_id,
+        SUM(CASE WHEN sc_app.senior_citizen_id IS NOT NULL THEN 1 ELSE 0 END) AS total_with_id,
+
+        -- Without Senior Citizen ID
+        SUM(CASE WHEN p.sex = 'Male' AND sc_app.senior_citizen_id IS NULL THEN 1 ELSE 0 END) AS male_without_id,
+        SUM(CASE WHEN p.sex = 'Female' AND sc_app.senior_citizen_id IS NULL THEN 1 ELSE 0 END) AS female_without_id,
+        SUM(CASE WHEN sc_app.senior_citizen_id IS NULL THEN 1 ELSE 0 END) AS total_without_id
+
+      FROM population p
+      JOIN family_information fi 
+        ON p.family_id = fi.family_id
+      JOIN households h 
+        ON fi.household_id = h.household_id
+      LEFT JOIN professional_information pi 
+        ON p.resident_id = pi.resident_id
+      LEFT JOIN senior_citizen_id_applications sc_app 
+        ON p.resident_id = sc_app.resident_id
+      WHERE TIMESTAMPDIFF(YEAR, p.birthdate, CURDATE()) >= 60
+      GROUP BY barangay_group 
+      ORDER BY barangay_group;
+    `);
+    
+    return res.status(200).json({ data: rows });
+
+  } catch (error) {
+    console.error('Error getting senior citizen summary:', error);
+    return res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
+

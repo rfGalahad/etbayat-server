@@ -29,6 +29,50 @@ router.get('/youthSummary',
   databankController.getYouthSummary
 );
 
+router.get('/osySummary', 
+  authenticateToken, 
+  databankController.getOsySummary
+);
+
+router.get('/womenSummary', 
+  authenticateToken, 
+  databankController.getWomenSummary
+);
+
+router.get('/soloParentSummary',
+  authenticateToken, 
+  databankController.getSoloParentSummary
+);
+
+router.get('/pwdSummary',
+  authenticateToken, 
+  databankController.getPwdSummary
+);
+
+router.get('/pwdCategory', 
+  authenticateToken, 
+  databankController.getPwdCategory
+);
+
+router.get('/pwdByDisability', 
+  authenticateToken, 
+  databankController.getPwdByDisability
+);
+
+router.get('/nonIvatanSummary',
+  authenticateToken, 
+  databankController.getNonIvatanSummary
+);
+
+router.get('/seniorCitizenSummary',
+  authenticateToken, 
+  databankController.getSeniorCitizenSummary
+);
+
+
+
+///////////////////////////////////////
+
 // GET POPULATION
 router.get('/population', 
   authenticateToken, 
