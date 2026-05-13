@@ -10,5 +10,8 @@ export const CLASSIFICATIONS = {
   pantawidBeneficiary: { code: 'PB', name: 'Pantawid Beneficiary' },
   lgbtq: { code: 'LGBTQ', name: 'LGBTQ+' },
   indigenousPerson: { code: 'INDIGENOUS', name: 'Indigenous Person' },
-  nonIvatan: { code: 'IPULA', name: 'Ipula/Non-Ivatan' }
+  nonIvatan: { code: 'IPULA', name: 'Ipula/Non-Ivatan' },
+  single_mother: { code: 'SINGLE_MOTHER', name: 'Single Mother' },
+  single_father: { code: 'SINGLE_FATHER', name: 'Single Father' },
+  guardian:      { code: 'GUARDIAN',      name: 'Guardian' },
 };

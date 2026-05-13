@@ -933,8 +933,16 @@ export const syncSocialClassifications = async (
       if (member.ofw) classifications.push(CLASSIFICATIONS.ofw);
       if (member.outOfTown) classifications.push(CLASSIFICATIONS.outOfTown);
       if (member.pwd) classifications.push(CLASSIFICATIONS.pwd);
-      if (member.soloParent) classifications.push(CLASSIFICATIONS.soloParent);
       if (member.nonIvatan) classifications.push(CLASSIFICATIONS.nonIvatan);
+
+      // Solo Parent: push base SP + sub-category if present
+      if (member.soloParent) {
+        classifications.push(CLASSIFICATIONS.soloParent);
+
+        if (member.soloParentCategory && CLASSIFICATIONS[member.soloParentCategory]) {
+          classifications.push(CLASSIFICATIONS[member.soloParentCategory]);
+        }
+      }
 
       if (member.youthCategory && CLASSIFICATIONS[member.youthCategory]) {
         classifications.push(CLASSIFICATIONS[member.youthCategory]);

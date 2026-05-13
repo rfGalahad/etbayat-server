@@ -437,6 +437,9 @@ export const getSurveyByIdService = async (surveyId) => {
       'OT': { field: 'outOfTown', value: true },
       'SP': { field: 'soloParent', value: true },
       'OFW': { field: 'ofw', value: true },
+      'SINGLE_MOTHER': { field: 'soloParentCategory', value: 'single_mother' },
+      'SINGLE_FATHER': { field: 'soloParentCategory', value: 'single_father' },
+      'GUARDIAN':      { field: 'soloParentCategory', value: 'guardian' },
     };
 
     const classificationsByResident = {};

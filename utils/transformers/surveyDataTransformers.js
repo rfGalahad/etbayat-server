@@ -339,6 +339,30 @@ const prepareSocialClassifications = (familyProfile, CLASSIFICATIONS) => {
   familyProfile.forEach((member, index) => {
     const residentId = member.residentId;
 
+    if (member.soloParentCategory) {
+      if (member.soloParentCategory === 'single_father') {
+        values.push([
+          residentId,
+          'SINGLE_FATHER',
+          'Single Father'
+        ]);
+      }
+      if (member.soloParentCategory === 'single_mother') {
+        values.push([
+          residentId,
+          'SINGLE_MOTHER',
+          'Single Mother'
+        ]);
+      }
+      if (member.soloParentCategory === 'guardian') {
+        values.push([
+          residentId,
+          'GUARDIAN',
+          'Guardian'
+        ]);
+      }
+    }
+
     if (member.ofw) {
       values.push([
         residentId,
