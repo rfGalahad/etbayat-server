@@ -22,7 +22,7 @@ export const getAllSpIdApplications = async (req, res) => {
       LEFT JOIN solo_parent_id_applications sp 
           ON p.resident_id = sp.resident_id
       WHERE sc.classification_code = 'SP'
-      ORDER BY COALESCE(ci.barangay, h.barangay), p.last_name, p.first_name;
+      ORDER BY sp.updated_at DESC;
     `);
 
     res.status(200).json({

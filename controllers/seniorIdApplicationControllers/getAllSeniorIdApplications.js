@@ -19,7 +19,7 @@ export const getAllSeniorIdApplications = async (req, res) => {
       LEFT JOIN senior_citizen_id_applications sc 
           ON p.resident_id = sc.resident_id
       WHERE TIMESTAMPDIFF(YEAR, p.birthdate, CURDATE()) >= 60
-      ORDER BY COALESCE(ci.barangay, h.barangay), p.last_name, p.first_name;
+      ORDER BY sc.updated_at DESC;
     `);
 
     res.status(200).json({

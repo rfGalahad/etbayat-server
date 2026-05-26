@@ -1,9 +1,5 @@
-import {
-  parseIncome
-} from '../../utils/numberUtils.js';
-import { 
-  formatDateForMySQL 
-} from "../../utils/dateUtils.js";
+import { parseIncome } from '../../utils/numberUtils.js';
+import { formatDateForMySQL } from "../../utils/dateUtils.js";
 import pool from '../../config/db.js';
 import { 
   generateSoloParentId, 
@@ -264,6 +260,8 @@ export const insertSpIdApplicationData = async (connection, data) => {
       resident_id,
       solo_parent_photo_id_url,
       solo_parent_signature_url,
+      solo_parent_category,
+      other_solo_parent_category,
       pantawid_beneficiary,
       beneficiary_code,
       household_id,
@@ -271,13 +269,15 @@ export const insertSpIdApplicationData = async (connection, data) => {
       indigenous_affiliation,
       lgbtq,
       renewal_date
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       data.soloParentId,
       data.userId,
       data.residentId ? data.residentId : data.tempResidentId,
       data.soloParentPhotoId?.url || null,
       data.soloParentSignature?.url || null,
+      data.personalInformation.soloParentCategory || null,
+      data.personalInformation.otherSoloParentCategory || null,
       data.personalInformation.pantawidBeneficiary,
       data.personalInformation.beneficiaryCode,
       data.personalInformation.householdId,

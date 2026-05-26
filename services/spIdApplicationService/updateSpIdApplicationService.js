@@ -1,17 +1,8 @@
 import pool from '../../config/db.js';
-import {
-  parseIncome
-} from '../../utils/numberUtils.js';
-import { 
-  formatDateForMySQL 
-} from "../../utils/dateUtils.js";
-import { 
-  base64ToBuffer, 
-  saveToLocal 
-} from '../../utils/fileUtils.js';
-import { 
-  upsertApplicantInformationData 
-} from './createSpIdApplicationService.js';
+import { parseIncome } from '../../utils/numberUtils.js';
+import { formatDateForMySQL } from "../../utils/dateUtils.js";
+import { base64ToBuffer, saveToLocal } from '../../utils/fileUtils.js';
+import { upsertApplicantInformationData } from './createSpIdApplicationService.js';
 
 
 export const updateSpIdApplicationService = async ({
@@ -131,6 +122,8 @@ export const updateSpIdApplicationData = async (connection, data) => {
   await connection.query(`
     UPDATE solo_parent_id_applications 
     SET solo_parent_id = ?,
+        solo_parent_category = ?,
+        other_solo_parent_category = ?,
         pantawid_beneficiary = ?,
         beneficiary_code = ?,
         household_id = ?,
@@ -142,6 +135,8 @@ export const updateSpIdApplicationData = async (connection, data) => {
   `,
     [
       data.newSoloParentId,
+      data.personalInformation.soloParentCategory,
+      data.personalInformation.otherSoloParentCategory,
       data.personalInformation.pantawidBeneficiary,
       data.personalInformation.beneficiaryCode,
       data.personalInformation.householdId,

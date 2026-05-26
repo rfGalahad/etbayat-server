@@ -13,7 +13,7 @@ export const getSpIdApplicationById = async (req, res) => {
       `SELECT 
         created_at as createdAt,
         resident_id as residentId,
-        renewal_date as renewalDate
+        DATE_FORMAT(renewal_date, '%m-%d-%Y') as renewalDate
       FROM solo_parent_id_applications
       WHERE solo_parent_id = ?`,
       [soloParentId]
@@ -45,6 +45,8 @@ export const getSpIdApplicationById = async (req, res) => {
           p.birthplace,
           g.philsys as philsysNumber,
 
+          pa.solo_parent_category as soloParentCategory,
+          pa.other_solo_parent_category as otherSoloParentCategory,
 
           CASE
             WHEN pa.pantawid_beneficiary =  1
