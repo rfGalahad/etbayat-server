@@ -141,7 +141,6 @@ const scorePair = (pair) => {
 const isLikelyDuplicate = (scored) =>
   scored.fnameDistance     <= 1 &&
   scored.lnameDistance     <= 2 &&
-  scored.birthdateDiffDays <= 2 &&
   scored.similarityScore   >= 3;
 
 /**
