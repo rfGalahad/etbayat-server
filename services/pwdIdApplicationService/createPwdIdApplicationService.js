@@ -103,7 +103,8 @@ export const createPwdIdApplicationService = async (
       otherInformation,
       familyBackground,
       accomplishedBy,
-      certifiedPhysician
+      certifiedPhysician,
+      personalInformation
     });
 
     /////////////////////////////////////////////////////////////////////
@@ -134,6 +135,8 @@ export const insertPwdIdApplicationData = async (
   connection, 
   data
 ) => {
+
+  console.log("PERSONAL INFORMATION", data.personalInformation);
   // PWD ID APPLICATION
   await connection.query(
     `INSERT INTO pwd_id_applications (
@@ -143,9 +146,10 @@ export const insertPwdIdApplicationData = async (
       pwd_photo_id_url,
       pwd_signature_url,
       reporting_unit,
-      control_number,
+      control_number, 
+      created_at,
       renewal_date
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       data.pwdId,
       data.userId,
@@ -154,6 +158,7 @@ export const insertPwdIdApplicationData = async (
       data.pwdSignature?.url || null,
       data.otherInformation.reportingUnit,
       data.otherInformation.controlNumber,
+      data.personalInformation.createdAt ? formatDateForMySQL(data.personalInformation.createdAt) : null,
       data.personalInformation.renewalDate ? formatDateForMySQL(data.personalInformation.renewalDate) : null
     ]
   );

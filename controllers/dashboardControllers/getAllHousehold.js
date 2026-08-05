@@ -4,16 +4,23 @@ export const getAllHousehold = async (req, res) => {
   try {
     const [current] = await pool.query(`
       SELECT 
-          h.barangay,
+          CASE 
+              WHEN h.barangay = 'Raele' AND h.sitio_yawran = 1 THEN 'Yawran'
+              ELSE h.barangay
+          END AS barangay,
           COUNT(h.household_id) AS total_household
       FROM households h
       JOIN family_information f
         ON f.household_id = h.household_id
       JOIN surveys s
         ON s.survey_id = f.survey_id
-      WHERE YEAR(s.updated_at) = YEAR(CURDATE()) 
-      GROUP BY h.barangay
-      ORDER BY h.barangay;
+      WHERE YEAR(s.updated_at) = YEAR(CURDATE())
+      GROUP BY 
+          CASE 
+              WHEN h.barangay = 'Raele' AND h.sitio_yawran = 1 THEN 'Yawran'
+              ELSE h.barangay
+          END
+      ORDER BY barangay;
     `);
 
     const [history] = await pool.query(`
