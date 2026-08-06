@@ -61,6 +61,22 @@ export const updatePwdIdApplicationService = async ({
       `, [uploadedFiles.pwdPhotoId.url, newPwdId])  
     }
 
+    // THUMB MARK
+    if (files?.pwdThumbMark?.[0]) {
+      uploadedFiles.pwdThumbMark = await saveToLocal(
+        files.pwdThumbMark[0].buffer,
+        'pwd-id-applications/photo-thumbmark',
+        `photo-thumbmark-${newPwdId}`,
+        files.pwdThumbMark[0].mimetype
+      );
+
+      await connection.query(`
+        UPDATE pwd_id_applications
+        SET pwd_thumb_mark_url= ?
+        WHERE pwd_id = ?
+      `, [uploadedFiles.pwdThumbMark.url, newPwdId])  
+    }
+
     // SIGNATURE
     if (isNewSignature) {
       const signatureBuffer = base64ToBuffer(pwdMedia.pwdSignature);

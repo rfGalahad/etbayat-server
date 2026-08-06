@@ -242,6 +242,7 @@ export const getPwdIdApplicationById = async (req, res) => {
       // PWD MEDIA
       connection.query(`
         SELECT
+          pwd_thumb_mark_url as pwdThumbMarkPreview,
           pwd_photo_id_url as pwdPhotoIdPreview,
           pwd_signature_url as pwdSignature
         FROM pwd_id_applications
@@ -283,6 +284,7 @@ export const getPwdIdApplicationById = async (req, res) => {
     const certifiedPhysician = certifiedPhysicianRows[0] || {};
     const otherInformation = otherInforamtionRows[0] || {};
     const pwdMedia = {
+      pwdThumbMarkPreview: getFileUrl(pwdMediaRows[0]?.pwdThumbMarkPreview, req),
       pwdPhotoIdPreview: getFileUrl(pwdMediaRows[0]?.pwdPhotoIdPreview, req),
       pwdSignature: getFileUrl(pwdMediaRows[0]?.pwdSignature, req)
     }

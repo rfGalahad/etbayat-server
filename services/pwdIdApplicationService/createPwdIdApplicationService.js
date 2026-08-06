@@ -66,6 +66,15 @@ export const createPwdIdApplicationService = async (
       );
     }
 
+    if (files?.pwdThumbMark?.[0]) {
+      uploadedFiles.pwdThumbMark = await saveToLocal(
+        files.pwdThumbMark[0].buffer,
+        'pwd-id-applications/photo-thumbmark',
+        `photo-thumbmark-${pwdId}`,
+        files.pwdThumbMark[0].mimetype
+      );
+    }
+
     if (pwdMedia?.pwdSignature) {
       const signatureBuffer = base64ToBuffer(pwdMedia.pwdSignature);
       uploadedFiles.pwdSignature = await saveToLocal(
@@ -98,6 +107,7 @@ export const createPwdIdApplicationService = async (
       pwdId, 
       userId,
       residentId: residentId || tempResidentId, 
+      pwdThumbMark: uploadedFiles.pwdThumbMark,
       pwdPhotoId: uploadedFiles.pwdPhotoId,
       pwdSignature: uploadedFiles.pwdSignature,
       otherInformation,
@@ -143,17 +153,19 @@ export const insertPwdIdApplicationData = async (
       pwd_id,
       user_id,
       resident_id,
+      pwd_thumb_mark_url,
       pwd_photo_id_url,
       pwd_signature_url,
       reporting_unit,
       control_number, 
       created_at,
       renewal_date
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       data.pwdId,
       data.userId,
       data.residentId ? data.residentId : data.tempResidentId,
+      data.pwdThumbMark?.url || null,
       data.pwdPhotoId?.url || null,
       data.pwdSignature?.url || null,
       data.otherInformation.reportingUnit,

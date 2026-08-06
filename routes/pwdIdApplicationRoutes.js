@@ -21,6 +21,7 @@ router.post(
   authenticateToken, 
   upload.fields([
     { name: 'pwdPhotoId', maxCount: 1 },
+    { name: 'pwdThumbMark', maxCount: 1 },
     { name: 'pwdSignature', maxCount: 1 }
   ]),
   resizeImages,
