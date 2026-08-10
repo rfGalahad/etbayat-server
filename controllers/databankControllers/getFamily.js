@@ -5,12 +5,10 @@ export const getFamily = async (req, res) => {
     const [rows] = await pool.query(`
       SELECT
         fi.family_id as familyId,
-
         fh.last_name   AS lastName,
         fh.first_name  AS firstName,
         fh.middle_name AS middleName,
         fh.suffix      AS suffix,
-
         COUNT(p.resident_id) AS totalResidents,
         SUM(CASE WHEN p.sex = 'Male' THEN 1 ELSE 0 END) AS totalMale,
         SUM(CASE WHEN p.sex = 'Female' THEN 1 ELSE 0 END) AS totalFemale,
@@ -26,7 +24,7 @@ export const getFamily = async (req, res) => {
         /* 9. Multiple family */
         h.multiple_family as multipleFamily,
         fi.family_class AS familyClass,
-        h.barangay
+        CASE WHEN h.sitio_yawran = TRUE THEN 'Yawran' ELSE h.barangay END AS barangay
 
         FROM family_information fi
 
@@ -86,7 +84,6 @@ export const getFamily = async (req, res) => {
             GROUP BY survey_id
         ) lv ON lv.survey_id = fi.survey_id
 
-
         GROUP BY
             fi.family_id,
             fh.last_name,
@@ -95,6 +92,8 @@ export const getFamily = async (req, res) => {
             fh.suffix,
             fi.monthly_income,
             h.multiple_family,
+            h.barangay,
+            h.sitio_yawran,
             fe.total_food,
             ee.total_education,
             fxe.total_family,
