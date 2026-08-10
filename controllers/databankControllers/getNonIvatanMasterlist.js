@@ -24,7 +24,8 @@ export const getNonIvatanMasterlist = async (req, res) => {
           END AS transient,
           nic.house_owner AS houseOwner,
           DATE_FORMAT(nic.date_registered, '%m-%d-%Y') AS dateRegistered,
-          h.barangay AS barangay
+          CASE WHEN h.sitio_yawran = TRUE THEN 'Yawran' ELSE h.barangay END AS barangay
+          
       FROM population p
       INNER JOIN social_classification sc
         ON p.resident_id = sc.resident_id

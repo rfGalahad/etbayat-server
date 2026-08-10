@@ -88,7 +88,7 @@ export const getYouthMasterlist = async (req, res) => {
           )) AS remarks,
 
 
-          h.barangay
+          CASE WHEN h.sitio_yawran = TRUE THEN 'Yawran' ELSE h.barangay END AS barangay
 
       FROM population p
       JOIN family_information fi ON fi.family_id = p.family_id

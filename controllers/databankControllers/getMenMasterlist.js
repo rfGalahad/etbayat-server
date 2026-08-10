@@ -20,7 +20,7 @@ export const getMenMasterlist = async (req, res) => {
                   THEN pi.other_occupation
               ELSE pi.occupation
           END AS occupation,
-        h.barangay AS barangay,
+        CASE WHEN h.sitio_yawran = TRUE THEN 'Yawran' ELSE h.barangay END AS barangay
 
         CASE
             -- SKILLED / WORKING

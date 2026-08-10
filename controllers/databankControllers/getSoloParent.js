@@ -41,7 +41,8 @@ export const getSoloParent = async (req, res) => {
           END AS occupation,
 
           sp.solo_parent_id as soloParentId,
-          h.barangay,
+
+          CASE WHEN h.sitio_yawran = TRUE THEN 'Yawran' ELSE h.barangay END AS barangay
 
           /* So parent appears first */
           CASE

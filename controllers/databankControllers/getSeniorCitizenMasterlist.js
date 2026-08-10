@@ -33,7 +33,8 @@ export const getSeniorCitizenMasterlist = async (req, res) => {
               THEN 'PWD'
           END AS remarks,
 
-          h.barangay AS barangay
+          CASE WHEN h.sitio_yawran = TRUE THEN 'Yawran' ELSE h.barangay END AS barangay
+
       FROM population p
       INNER JOIN professional_information pi
           ON p.resident_id = pi.resident_id

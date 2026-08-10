@@ -1,5 +1,5 @@
 import pool from '../../config/db.js';
-
+ 
 export const getHousehold = async (req, res) => {
   try {
     const [rows] = await pool.query(`
@@ -40,7 +40,7 @@ export const getHousehold = async (req, res) => {
         h.latitude,
         h.longitude,
         h.street,
-        h.barangay,
+        CASE WHEN h.sitio_yawran = TRUE THEN 'Yawran' ELSE h.barangay END AS barangay
 
         IF(COUNT(hi.house_image_url) > 0, 1, 0) AS hasHouseImage,
 

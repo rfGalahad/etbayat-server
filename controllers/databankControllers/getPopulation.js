@@ -136,7 +136,7 @@ export const getPopulation = async (req, res) => {
         END AS verifiedBirthdate,
 
         p.specify_id as specifyId,
-        hi.barangay
+        CASE WHEN hi.sitio_yawran = TRUE THEN 'Yawran' ELSE hi.barangay END AS barangay
         
       FROM population p
       LEFT JOIN family_information fi ON p.family_id = fi.family_id
