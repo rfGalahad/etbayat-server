@@ -4,79 +4,81 @@ export const getSoloParent = async (req, res) => {
   try {
     const [rows] = await pool.query(`
       SELECT
-          r.resident_id AS residentId,
-          fam.family_id as familyId,
+        r.resident_id AS residentId,
+        fam.family_id AS familyId,
 
-          /* Parent full name (same for all rows in the family) */
-          CONCAT_WS(' ',
-              parent.first_name,
-              parent.middle_name,
-              parent.last_name,
-              parent.suffix
-          ) AS parentName,
+        /* Parent full name (same for all rows in the family) */
+        CONCAT_WS(' ',
+            parent.first_name,
+            parent.middle_name,
+            parent.last_name,
+            parent.suffix
+        ) AS parentName,
 
-          /* Resident (parent or child) name */
-          CASE
-              WHEN r.relation_to_family_head <> 'Family Head'
-              AND TIMESTAMPDIFF(YEAR, r.birthdate, CURDATE()) <= 22
-              THEN CONCAT_WS(' ',
-                  r.first_name,
-                  r.middle_name,
-                  r.last_name,
-                  r.suffix
-              )
-              ELSE NULL
-          END AS childName,
+        /* Resident (child) name — only for dependents 22 or under */
+        CASE
+            WHEN r.relation_to_family_head <> 'Family Head'
+            AND TIMESTAMPDIFF(YEAR, r.birthdate, CURDATE()) <= 22
+            THEN CONCAT_WS(' ',
+                r.first_name,
+                r.middle_name,
+                r.last_name,
+                r.suffix
+            )
+            ELSE NULL
+        END AS childName,
 
-          DATE_FORMAT(r.birthdate, '%m-%d-%Y') AS birthdate,
-          TIMESTAMPDIFF(YEAR, r.birthdate, CURDATE()) AS age,
-          r.sex,
+        DATE_FORMAT(r.birthdate, '%m-%d-%Y') AS birthdate,
+        TIMESTAMPDIFF(YEAR, r.birthdate, CURDATE()) AS age,
+        r.sex,
 
-          pi.educational_attainment as educationalAttainment,
-          
-          CASE
-              WHEN pi.occupation = 'Others' 
-                  THEN pi.other_occupation
-              ELSE pi.occupation
-          END AS occupation,
+        pi.educational_attainment AS educationalAttainment,
 
-          sp.solo_parent_id as soloParentId,
+        CASE
+            WHEN pi.occupation = 'Others'
+                THEN pi.other_occupation
+            ELSE pi.occupation
+        END AS occupation,
 
-          CASE WHEN h.sitio_yawran = TRUE THEN 'Yawran' ELSE h.barangay END AS barangay
+        sp.solo_parent_id AS soloParentId,
 
-          /* So parent appears first */
-          CASE
-              WHEN r.relation_to_family_head = 'Family Head' THEN 0
-              ELSE 1
-          END AS sort_order
+        CASE WHEN h.sitio_yawran = TRUE THEN 'Yawran' ELSE h.barangay END AS barangay,
 
-      FROM social_classification sc
-      JOIN population r
-          ON sc.resident_id = r.resident_id
+        /* So parent appears first */
+        CASE
+            WHEN r.relation_to_family_head = 'Family Head' THEN 0
+            ELSE 1
+        END AS sort_order
 
-      /* Get the FAMILY HEAD (parent) */
-      JOIN population parent
-          ON parent.family_id = r.family_id
-        AND parent.relation_to_family_head = 'Family Head'
+    FROM family_information fam
 
-      JOIN family_information fam
-          ON fam.family_id = r.family_id
+    /* Get the FAMILY HEAD (parent) */
+    JOIN population parent
+        ON parent.family_id = fam.family_id
+    AND parent.relation_to_family_head = 'Family Head'
 
-      JOIN households h
-          ON h.household_id = fam.household_id
+    /* Confirm the family is a solo-parent family via the parent's classification */
+    JOIN social_classification sc
+        ON sc.resident_id = parent.resident_id
+    AND sc.classification_code = 'SP'
 
-      LEFT JOIN professional_information pi
-          ON pi.resident_id = r.resident_id
+    /* Now bring in every member of that family (parent + children) */
+    JOIN population r
+        ON r.family_id = fam.family_id
 
-      LEFT JOIN solo_parent_id_applications sp
-          ON sp.resident_id = parent.resident_id
+    JOIN households h
+        ON h.household_id = fam.household_id
 
-      WHERE sc.classification_code = 'SP'
+    LEFT JOIN professional_information pi
+        ON pi.resident_id = r.resident_id
 
-      ORDER BY
-          fam.family_id,
-          sort_order,
-          r.birthdate;
+    LEFT JOIN solo_parent_id_applications sp
+        ON sp.resident_id = parent.resident_id
+
+    ORDER BY
+        fam.family_id,
+        sort_order,
+        r.birthdate;
     `);
     
     res.status(200).json({
