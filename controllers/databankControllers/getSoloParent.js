@@ -15,18 +15,13 @@ export const getSoloParent = async (req, res) => {
             parent.suffix
         ) AS parentName,
 
-        /* Resident (child) name — only for dependents 22 or under */
-        CASE
-            WHEN r.relation_to_family_head <> 'Family Head'
-            AND TIMESTAMPDIFF(YEAR, r.birthdate, CURDATE()) <= 22
-            THEN CONCAT_WS(' ',
-                r.first_name,
-                r.middle_name,
-                r.last_name,
-                r.suffix
-            )
-            ELSE NULL
-        END AS childName,
+        /* Child name */
+        CONCAT_WS(' ',
+            r.first_name,
+            r.middle_name,
+            r.last_name,
+            r.suffix
+        ) AS childName,
 
         DATE_FORMAT(r.birthdate, '%m-%d-%Y') AS birthdate,
         TIMESTAMPDIFF(YEAR, r.birthdate, CURDATE()) AS age,
@@ -42,13 +37,7 @@ export const getSoloParent = async (req, res) => {
 
         sp.solo_parent_id AS soloParentId,
 
-        CASE WHEN h.sitio_yawran = TRUE THEN 'Yawran' ELSE h.barangay END AS barangay,
-
-        /* So parent appears first */
-        CASE
-            WHEN r.relation_to_family_head = 'Family Head' THEN 0
-            ELSE 1
-        END AS sort_order
+        CASE WHEN h.sitio_yawran = TRUE THEN 'Yawran' ELSE h.barangay END AS barangay
 
     FROM family_information fam
 
@@ -62,9 +51,11 @@ export const getSoloParent = async (req, res) => {
         ON sc.resident_id = parent.resident_id
     AND sc.classification_code = 'SP'
 
-    /* Now bring in every member of that family (parent + children) */
+    /* Bring in only the children (non-head residents under 22) */
     JOIN population r
         ON r.family_id = fam.family_id
+    AND r.relation_to_family_head <> 'Family Head'
+    AND TIMESTAMPDIFF(YEAR, r.birthdate, CURDATE()) < 22
 
     JOIN households h
         ON h.household_id = fam.household_id
@@ -77,7 +68,6 @@ export const getSoloParent = async (req, res) => {
 
     ORDER BY
         fam.family_id,
-        sort_order,
         r.birthdate;
     `);
     
