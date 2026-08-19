@@ -7,7 +7,7 @@ export const getSoloParent = async (req, res) => {
         r.resident_id AS residentId,
         fam.family_id AS familyId,
 
-        /* Parent full name */
+        /* Parent full name and details */
         CONCAT_WS(' ',
             parent.first_name,
             parent.middle_name,
@@ -31,6 +31,7 @@ export const getSoloParent = async (req, res) => {
             r.last_name,
             r.suffix
         ) AS childName,
+        r.relation_to_family_head AS relationToFamilyHead,  
         DATE_FORMAT(r.birthdate, '%m-%d-%Y') AS birthdate,
         TIMESTAMPDIFF(YEAR, r.birthdate, CURDATE()) AS age,
         r.sex,
