@@ -152,6 +152,12 @@ router.get('/seniorCitizen',
   databankController.getSeniorCitizenMasterlist
 );
 
+// GET ISSUES AND CONCERN MASTERLIST
+router.get('/issuesConcern', 
+  authenticateToken, 
+  databankController.getIssuesConcern
+);
+
 // GET NON-IVATAN MASTERLIST
 router.get('/nonIvatan', 
   authenticateToken, 

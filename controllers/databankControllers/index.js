@@ -33,3 +33,5 @@ export { getFamilyDetailsById } from './getFamilyDetailsById.js'
 export { updateFamilyClass } from './updateFamilyClass.js'
 
 export { exportHouseholdPdf } from './exportHouseholdPdf.js'
+
+export { getIssuesConcern } from './issuesConcern.js'
