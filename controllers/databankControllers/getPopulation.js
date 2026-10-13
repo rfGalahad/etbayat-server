@@ -5,6 +5,7 @@ export const getPopulation = async (req, res) => {
     const [rows] = await pool.query(`
       SELECT 
         p.resident_id AS residentId,
+        p.family_id AS familyId,
 
         p.last_name AS lastName,
         p.first_name AS firstName,
@@ -145,7 +146,11 @@ export const getPopulation = async (req, res) => {
       LEFT JOIN government_ids gi ON p.resident_id = gi.resident_id
       JOIN households hi ON fi.household_id = hi.household_id
       WHERE p.resident_id LIKE 'RID%'
-      ORDER BY name ASC;
+      ORDER BY
+        barangay ASC,
+        p.family_id ASC,
+        CASE WHEN p.relation_to_family_head = 'Family Head' THEN 0 ELSE 1 END ASC,
+        name ASC;
     `);
     
     res.status(200).json({
